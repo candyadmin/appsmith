@@ -10,6 +10,15 @@ module.exports = {
         protocol: "ws",
       },
     },
+    proxy: {
+      "/api": {
+        target: "http://localhost:8080",
+        changeOrigin: true,
+        pathRewrite: {
+          "^/api": "/api",
+        },
+      },
+    },
   },
   webpack: {
     configure: {

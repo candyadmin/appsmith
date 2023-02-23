@@ -40,7 +40,8 @@ public class PluginScheduledTaskCEImpl implements PluginScheduledTaskCE {
 
 
     // Number of milliseconds between the start of each scheduled calls to this method.
-    @Scheduled(initialDelay = 30 * 1000 /* 30 seconds */, fixedRate = 2 * 60 * 60 * 1000 /* two hours */)
+    @Override
+	@Scheduled(initialDelay = 30 * 1000 /* 30 seconds */, fixedRate = 2 * 60 * 60 * 1000 /* two hours */)
     public void updateRemotePlugins() {
         // Get all plugins on this instance
         final Mono<Map<PluginIdentifier, Plugin>> availablePluginsMono =
