@@ -1,0 +1,14 @@
+version: "3.7"
+
+services:
+  appsmith-internal-client:
+    build:
+      context: ./
+    ports:
+      - "80:80"
+    networks:
+      - appsmith
+
+networks:
+  appsmith:
+    driver: bridge
