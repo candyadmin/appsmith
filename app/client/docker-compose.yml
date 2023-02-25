@@ -1,14 +1,13 @@
 version: "3.7"
 
 services:
-  appsmith-internal-client:
+
+  appsmith:
     build:
       context: ./
+    container_name: appsmith
     ports:
       - "80:80"
-    networks:
-      - appsmith
-
-networks:
-  appsmith:
-    driver: bridge
+      - "443:443"
+    volumes:
+      - ./stacks:/appsmith-stacks
