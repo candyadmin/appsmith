@@ -2,7 +2,7 @@ package com.appsmith.server.services;
 
 import com.appsmith.server.configurations.CloudServicesConfig;
 import com.appsmith.server.domains.UserData;
-import com.appsmith.server.dtos.ApplicationTemplate;
+import com.appsmith.server.dtos.ApplicationTemplateDTO;
 import com.appsmith.server.dtos.PageNameIdDTO;
 import com.appsmith.server.helpers.ResponseUtils;
 import com.appsmith.server.solutions.ApplicationPermission;
@@ -35,7 +35,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * This test is written based on the inspiration from the tutorial: https://www.baeldung.com/spring-mocking-webclient
  */
 @ExtendWith(SpringExtension.class)
-public class ApplicationTemplateServiceTest {
+public class ApplicationTemplateDTOServiceTest {
     ApplicationTemplateService applicationTemplateService;
     private static ObjectMapper objectMapper = new ObjectMapper();
 
@@ -82,24 +82,24 @@ public class ApplicationTemplateServiceTest {
         // mock the cloud services config so that it returns mock server url as cloud service base url
         Mockito.when(cloudServicesConfig.getBaseUrl()).thenReturn(baseUrl);
 
-        applicationTemplateService = new ApplicationTemplateServiceImpl(
-                cloudServicesConfig, releaseNotesService, importExportApplicationService, analyticsService,
-                userDataService, applicationService, responseUtils, applicationPermission
-        );
+//        applicationTemplateService = new ApplicationTemplateServiceImpl(
+//                cloudServicesConfig, releaseNotesService, importExportApplicationService, analyticsService,
+//                userDataService, applicationService, responseUtils, applicationPermission
+//        );
     }
 
-    private ApplicationTemplate create(String id, String title) {
-        ApplicationTemplate applicationTemplate = new ApplicationTemplate();
-        applicationTemplate.setId(id);
-        applicationTemplate.setTitle(title);
-        return applicationTemplate;
+    private ApplicationTemplateDTO create(String id, String title) {
+        ApplicationTemplateDTO applicationTemplateDTO = new ApplicationTemplateDTO();
+        applicationTemplateDTO.setId(id);
+        applicationTemplateDTO.setTitle(title);
+        return applicationTemplateDTO;
     }
 
     @Test
     public void getActiveTemplates_WhenRecentlyUsedExists_RecentOnesComesFirst() throws JsonProcessingException {
-        ApplicationTemplate templateOne = create("id-one", "First template");
-        ApplicationTemplate templateTwo = create("id-two", "Seonds template");
-        ApplicationTemplate templateThree = create("id-three", "Third template");
+        ApplicationTemplateDTO templateOne = create("id-one", "First template");
+        ApplicationTemplateDTO templateTwo = create("id-two", "Seonds template");
+        ApplicationTemplateDTO templateThree = create("id-three", "Third template");
 
         // mock the server to return the above three templates
         mockCloudServices
@@ -112,7 +112,7 @@ public class ApplicationTemplateServiceTest {
         mockUserData.setRecentlyUsedTemplateIds(List.of("id-two"));
         Mockito.when(userDataService.getForCurrentUser()).thenReturn(Mono.just(mockUserData));
 
-        Mono<List<ApplicationTemplate>> templateListMono = applicationTemplateService.getActiveTemplates(null);
+        Mono<List<ApplicationTemplateDTO>> templateListMono = applicationTemplateService.getActiveTemplates(null);
 
         StepVerifier.create(templateListMono).assertNext(applicationTemplates -> {
             assertThat(applicationTemplates.size()).isEqualTo(3);
@@ -186,9 +186,9 @@ public class ApplicationTemplateServiceTest {
         StepVerifier.create(applicationTemplateService.getActiveTemplates(null))
                 .assertNext(applicationTemplates -> {
                     assertThat(applicationTemplates.size()).isEqualTo(1);
-                    ApplicationTemplate applicationTemplate = applicationTemplates.get(0);
-                    assertThat(applicationTemplate.getPages()).hasSize(1);
-                    PageNameIdDTO pageNameIdDTO = applicationTemplate.getPages().get(0);
+                    ApplicationTemplateDTO applicationTemplateDTO = applicationTemplates.get(0);
+                    assertThat(applicationTemplateDTO.getPages()).hasSize(1);
+                    PageNameIdDTO pageNameIdDTO = applicationTemplateDTO.getPages().get(0);
                     assertThat(pageNameIdDTO.getId()).isEqualTo("1234567890");
                     assertThat(pageNameIdDTO.getName()).isEqualTo("My Page");
                     assertThat(pageNameIdDTO.getIsDefault()).isTrue();

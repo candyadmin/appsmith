@@ -1,9 +1,8 @@
 package com.appsmith.server.controllers.ce;
 
 import com.appsmith.server.constants.FieldName;
-import com.appsmith.server.domains.Application;
 import com.appsmith.server.dtos.ApplicationImportDTO;
-import com.appsmith.server.dtos.ApplicationTemplate;
+import com.appsmith.server.dtos.ApplicationTemplateDTO;
 import com.appsmith.server.dtos.ResponseDTO;
 import com.appsmith.server.services.ApplicationTemplateService;
 import lombok.extern.slf4j.Slf4j;
@@ -29,25 +28,25 @@ public class ApplicationTemplateControllerCE {
     }
 
     @GetMapping
-    public Mono<ResponseDTO<List<ApplicationTemplate>>> getAll() {
+    public Mono<ResponseDTO<List<ApplicationTemplateDTO>>> getAll() {
         return applicationTemplateService.getActiveTemplates(null)
                 .map(templates -> new ResponseDTO<>(HttpStatus.OK.value(), templates, null));
     }
 
     @GetMapping("{templateId}")
-    public Mono<ResponseDTO<ApplicationTemplate>> getTemplateDetails(@PathVariable String templateId) {
+    public Mono<ResponseDTO<ApplicationTemplateDTO>> getTemplateDetails(@PathVariable String templateId) {
         return applicationTemplateService.getTemplateDetails(templateId)
                 .map(templates -> new ResponseDTO<>(HttpStatus.OK.value(), templates, null));
     }
 
     @GetMapping("{templateId}/similar")
-    public Mono<ResponseDTO<List<ApplicationTemplate>>> getSimilarTemplates(@PathVariable String templateId, @RequestParam MultiValueMap<String, String> params) {
+    public Mono<ResponseDTO<List<ApplicationTemplateDTO>>> getSimilarTemplates(@PathVariable String templateId, @RequestParam MultiValueMap<String, String> params) {
         return applicationTemplateService.getSimilarTemplates(templateId, params).collectList()
                 .map(templates -> new ResponseDTO<>(HttpStatus.OK.value(), templates, null));
     }
 
     @GetMapping("filters")
-    public Mono<ResponseDTO<ApplicationTemplate>> getFilters() {
+    public Mono<ResponseDTO<ApplicationTemplateDTO>> getFilters() {
         return applicationTemplateService.getFilters()
                 .map(filters -> new ResponseDTO<>(HttpStatus.OK.value(), filters, null));
     }
@@ -60,7 +59,7 @@ public class ApplicationTemplateControllerCE {
     }
 
     @GetMapping("recent")
-    public Mono<ResponseDTO<List<ApplicationTemplate>>> getRecentlyUsedTemplates() {
+    public Mono<ResponseDTO<List<ApplicationTemplateDTO>>> getRecentlyUsedTemplates() {
         return applicationTemplateService.getRecentlyUsedTemplates()
                 .map(templates -> new ResponseDTO<>(HttpStatus.OK.value(), templates, null));
     }

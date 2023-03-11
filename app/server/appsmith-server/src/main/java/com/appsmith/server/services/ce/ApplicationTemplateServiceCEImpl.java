@@ -6,15 +6,18 @@ import com.appsmith.server.configurations.CloudServicesConfig;
 import com.appsmith.server.constants.FieldName;
 import com.appsmith.server.domains.Application;
 import com.appsmith.server.domains.ApplicationMode;
+import com.appsmith.server.domains.ApplicationTemplate;
 import com.appsmith.server.domains.UserData;
 import com.appsmith.server.dtos.ApplicationImportDTO;
 import com.appsmith.server.dtos.ApplicationJson;
-import com.appsmith.server.dtos.ApplicationTemplate;
+import com.appsmith.server.dtos.ApplicationTemplateDTO;
 import com.appsmith.server.exceptions.AppsmithError;
 import com.appsmith.server.exceptions.AppsmithException;
 import com.appsmith.server.helpers.ResponseUtils;
+import com.appsmith.server.repositories.ApplicationTemplateRepository;
 import com.appsmith.server.services.AnalyticsService;
 import com.appsmith.server.services.ApplicationService;
+import com.appsmith.server.services.BaseService;
 import com.appsmith.server.services.UserDataService;
 import com.appsmith.server.solutions.ApplicationPermission;
 import com.appsmith.server.solutions.ImportExportApplicationService;
@@ -23,8 +26,9 @@ import com.appsmith.util.WebClientUtils;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
+import org.springframework.data.mongodb.core.ReactiveMongoTemplate;
+import org.springframework.data.mongodb.core.convert.MongoConverter;
 import org.springframework.http.HttpStatus;
-import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.reactive.function.client.ExchangeStrategies;
@@ -34,7 +38,9 @@ import org.springframework.web.util.UriComponents;
 import org.springframework.web.util.UriComponentsBuilder;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Scheduler;
 
+import javax.validation.Validator;
 import java.lang.reflect.Type;
 import java.time.Instant;
 import java.util.Comparator;
@@ -42,8 +48,7 @@ import java.util.List;
 import java.util.Map;
 
 
-@Service
-public class ApplicationTemplateServiceCEImpl implements ApplicationTemplateServiceCE {
+public class ApplicationTemplateServiceCEImpl extends BaseService<ApplicationTemplateRepository, ApplicationTemplate, String> implements ApplicationTemplateServiceCE {
     private final CloudServicesConfig cloudServicesConfig;
     private final ReleaseNotesService releaseNotesService;
     private final ImportExportApplicationService importExportApplicationService;
@@ -53,7 +58,12 @@ public class ApplicationTemplateServiceCEImpl implements ApplicationTemplateServ
     private final ResponseUtils responseUtils;
     private final ApplicationPermission applicationPermission;
 
-    public ApplicationTemplateServiceCEImpl(CloudServicesConfig cloudServicesConfig,
+    public ApplicationTemplateServiceCEImpl(Scheduler scheduler,
+                                            Validator validator,
+                                            MongoConverter mongoConverter,
+                                            ReactiveMongoTemplate reactiveMongoTemplate,
+                                            ApplicationTemplateRepository repository,
+                                            CloudServicesConfig cloudServicesConfig,
                                             ReleaseNotesService releaseNotesService,
                                             ImportExportApplicationService importExportApplicationService,
                                             AnalyticsService analyticsService,
@@ -61,6 +71,7 @@ public class ApplicationTemplateServiceCEImpl implements ApplicationTemplateServ
                                             ApplicationService applicationService,
                                             ResponseUtils responseUtils,
                                             ApplicationPermission applicationPermission) {
+        super(scheduler,validator,mongoConverter,reactiveMongoTemplate,repository,analyticsService);
         this.cloudServicesConfig = cloudServicesConfig;
         this.releaseNotesService = releaseNotesService;
         this.importExportApplicationService = importExportApplicationService;
@@ -72,7 +83,7 @@ public class ApplicationTemplateServiceCEImpl implements ApplicationTemplateServ
     }
 
     @Override
-    public Flux<ApplicationTemplate> getSimilarTemplates(String templateId, MultiValueMap<String, String> params) {
+    public Flux<ApplicationTemplateDTO> getSimilarTemplates(String templateId, MultiValueMap<String, String> params) {
         UriComponents uriComponents = UriComponentsBuilder
                 .fromUriString(cloudServicesConfig.getBaseUrl())
                 .pathSegment("api/v1/app-templates", templateId, "similar")
@@ -87,7 +98,7 @@ public class ApplicationTemplateServiceCEImpl implements ApplicationTemplateServ
                 .get()
                 .exchangeToFlux(clientResponse -> {
                     if (clientResponse.statusCode().equals(HttpStatus.OK)) {
-                        return clientResponse.bodyToFlux(ApplicationTemplate.class);
+                        return clientResponse.bodyToFlux(ApplicationTemplateDTO.class);
                     } else if (clientResponse.statusCode().isError()) {
                         return Flux.error(new AppsmithException(AppsmithError.CLOUD_SERVICES_ERROR, clientResponse.statusCode()));
                     } else {
@@ -97,7 +108,7 @@ public class ApplicationTemplateServiceCEImpl implements ApplicationTemplateServ
     }
 
     @Override
-    public Mono<List<ApplicationTemplate>> getActiveTemplates(List<String> templateIds) {
+    public Mono<List<ApplicationTemplateDTO>> getActiveTemplates(List<String> templateIds) {
         final String baseUrl = cloudServicesConfig.getBaseUrl();
 
         UriComponentsBuilder uriComponentsBuilder = UriComponentsBuilder.newInstance()
@@ -115,7 +126,8 @@ public class ApplicationTemplateServiceCEImpl implements ApplicationTemplateServ
                 .get()
                 .exchangeToFlux(clientResponse -> {
                     if (clientResponse.statusCode().equals(HttpStatus.OK)) {
-                        return clientResponse.bodyToFlux(ApplicationTemplate.class);
+                        Flux<ApplicationTemplateDTO> applicationTemplateDTOFlux = clientResponse.bodyToFlux(ApplicationTemplateDTO.class);
+                        return applicationTemplateDTOFlux;
                     } else if (clientResponse.statusCode().isError()) {
                         return Flux.error(new AppsmithException(AppsmithError.CLOUD_SERVICES_ERROR, clientResponse.statusCode()));
                     } else {
@@ -124,11 +136,11 @@ public class ApplicationTemplateServiceCEImpl implements ApplicationTemplateServ
                 })
                 .collectList().zipWith(userDataService.getForCurrentUser())
                 .map(objects -> {
-                    List<ApplicationTemplate> applicationTemplateList = objects.getT1();
+                    List<ApplicationTemplateDTO> applicationTemplateDTOList = objects.getT1();
                     UserData userData = objects.getT2();
                     List<String> recentlyUsedTemplateIds = userData.getRecentlyUsedTemplateIds();
                     if (!CollectionUtils.isEmpty(recentlyUsedTemplateIds)) {
-                        applicationTemplateList.sort(
+                        applicationTemplateDTOList.sort(
                                 Comparator.comparingInt(o -> {
                                     int index = recentlyUsedTemplateIds.indexOf(o.getId());
                                     if (index < 0) {
@@ -139,12 +151,14 @@ public class ApplicationTemplateServiceCEImpl implements ApplicationTemplateServ
                                 })
                         );
                     }
-                    return applicationTemplateList;
-                });
+                    applicationTemplateDTOList.forEach(item->repository.save((ApplicationTemplate)item));
+                    return applicationTemplateDTOList;
+                })
+                ;
     }
 
     @Override
-    public Mono<ApplicationTemplate> getTemplateDetails(String templateId) {
+    public Mono<ApplicationTemplateDTO> getTemplateDetails(String templateId) {
         final String baseUrl = cloudServicesConfig.getBaseUrl();
 
         return WebClientUtils
@@ -152,7 +166,7 @@ public class ApplicationTemplateServiceCEImpl implements ApplicationTemplateServ
                 .get()
                 .exchangeToMono(clientResponse -> {
                     if (clientResponse.statusCode().equals(HttpStatus.OK)) {
-                        return clientResponse.bodyToMono(ApplicationTemplate.class);
+                        return clientResponse.bodyToMono(ApplicationTemplateDTO.class);
                     } else if (clientResponse.statusCode().isError()) {
                         return Mono.error(new AppsmithException(AppsmithError.CLOUD_SERVICES_ERROR, clientResponse.statusCode()));
                     } else {
@@ -203,8 +217,8 @@ public class ApplicationTemplateServiceCEImpl implements ApplicationTemplateServ
                 .flatMap(application -> importExportApplicationService.getApplicationImportDTO(application.getId(), application.getWorkspaceId(), application))
                 .flatMap(applicationImportDTO -> {
                     Application application = applicationImportDTO.getApplication();
-                    ApplicationTemplate applicationTemplate = new ApplicationTemplate();
-                    applicationTemplate.setId(templateId);
+                    ApplicationTemplateDTO applicationTemplateDTO = new ApplicationTemplateDTO();
+                    applicationTemplateDTO.setId(templateId);
                     final Map<String, Object> eventData = Map.of(
                             FieldName.APP_MODE, ApplicationMode.EDIT.toString(),
                             FieldName.APPLICATION, application
@@ -217,13 +231,13 @@ public class ApplicationTemplateServiceCEImpl implements ApplicationTemplateServ
                             FieldName.EVENT_DATA, eventData
                     );
 
-                    return analyticsService.sendObjectEvent(AnalyticsEvents.FORK, applicationTemplate, data)
+                    return analyticsService.sendObjectEvent(AnalyticsEvents.FORK, applicationTemplateDTO, data)
                             .thenReturn(applicationImportDTO);
                 });
     }
 
     @Override
-    public Mono<List<ApplicationTemplate>> getRecentlyUsedTemplates() {
+    public Mono<List<ApplicationTemplateDTO>> getRecentlyUsedTemplates() {
         return userDataService.getForCurrentUser().flatMap(userData -> {
             List<String> templateIds = userData.getRecentlyUsedTemplateIds();
             if (!CollectionUtils.isEmpty(templateIds)) {
@@ -234,7 +248,7 @@ public class ApplicationTemplateServiceCEImpl implements ApplicationTemplateServ
     }
 
     @Override
-    public Mono<ApplicationTemplate> getFilters() {
+    public Mono<ApplicationTemplateDTO> getFilters() {
         final String baseUrl = cloudServicesConfig.getBaseUrl();
 
         return WebClientUtils
@@ -242,7 +256,7 @@ public class ApplicationTemplateServiceCEImpl implements ApplicationTemplateServ
                 .get()
                 .exchangeToMono(clientResponse -> {
                     if (clientResponse.statusCode().equals(HttpStatus.OK)) {
-                        return clientResponse.bodyToMono(ApplicationTemplate.class);
+                        return clientResponse.bodyToMono(ApplicationTemplateDTO.class);
                     } else if (clientResponse.statusCode().isError()) {
                         return Mono.error(new AppsmithException(AppsmithError.CLOUD_SERVICES_ERROR, clientResponse.statusCode()));
                     } else {
@@ -287,8 +301,8 @@ public class ApplicationTemplateServiceCEImpl implements ApplicationTemplateServ
                 .flatMap(applicationImportDTO -> {
                     responseUtils.updateApplicationWithDefaultResources(applicationImportDTO.getApplication());
                     Application application = applicationImportDTO.getApplication();
-                    ApplicationTemplate applicationTemplate = new ApplicationTemplate();
-                    applicationTemplate.setId(templateId);
+                    ApplicationTemplateDTO applicationTemplateDTO = new ApplicationTemplateDTO();
+                    applicationTemplateDTO.setId(templateId);
                     final Map<String, Object> eventData = Map.of(
                             FieldName.APP_MODE, ApplicationMode.EDIT.toString(),
                             FieldName.APPLICATION, application
@@ -301,7 +315,7 @@ public class ApplicationTemplateServiceCEImpl implements ApplicationTemplateServ
                             FieldName.EVENT_DATA, eventData
                     );
 
-                    return analyticsService.sendObjectEvent(AnalyticsEvents.FORK, applicationTemplate, data)
+                    return analyticsService.sendObjectEvent(AnalyticsEvents.FORK, applicationTemplateDTO, data)
                             .thenReturn(applicationImportDTO);
                 });
 

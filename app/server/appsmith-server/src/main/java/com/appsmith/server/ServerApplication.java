@@ -11,7 +11,7 @@ public class ServerApplication {
 
     public static void main(String[] args) {
         new SpringApplicationBuilder(ServerApplication.class)
-                .bannerMode(Banner.Mode.OFF)
+                .bannerMode(Banner.Mode.LOG)
                 .run(args);
     }
 
