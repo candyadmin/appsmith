@@ -1,27 +1,27 @@
 import { ValidationTypes } from "constants/WidgetValidation";
-import {
-  ColumnTypes,
-  DateInputFormat,
-  TableWidgetProps,
-} from "widgets/TableWidgetV2/constants";
+import type { TableWidgetProps } from "widgets/TableWidgetV2/constants";
+import { ColumnTypes, DateInputFormat } from "widgets/TableWidgetV2/constants";
 import { get } from "lodash";
 import {
   getBasePropertyPath,
   hideByColumnType,
   showByColumnType,
   uniqueColumnAliasValidation,
+  updateCurrencyDefaultValues,
+  updateMenuItemsSource,
   updateNumberColumnTypeTextAlignment,
   updateThemeStylesheetsInColumns,
 } from "../../propertyUtils";
-import { AutocompleteDataType } from "utils/autocomplete/CodemirrorTernService";
+import { AutocompleteDataType } from "utils/autocomplete/AutocompleteDataType";
 import { composePropertyUpdateHook } from "widgets/WidgetUtils";
+import { CurrencyDropdownOptions } from "widgets/CurrencyInputWidget/component/CurrencyCodeDropdown";
 
 export default {
   sectionName: "Data",
   children: [
     {
       propertyName: "columnType",
-      label: "Column Type",
+      label: "Column type",
       helpText:
         "Type of column to be shown corresponding to the data of the column",
       controlType: "DROP_DOWN",
@@ -35,11 +35,15 @@ export default {
           value: ColumnTypes.CHECKBOX,
         },
         {
+          label: "Currency",
+          value: ColumnTypes.CURRENCY,
+        },
+        {
           label: "Date",
           value: ColumnTypes.DATE,
         },
         {
-          label: "Icon Button",
+          label: "Icon button",
           value: ColumnTypes.ICON_BUTTON,
         },
         {
@@ -47,7 +51,7 @@ export default {
           value: ColumnTypes.IMAGE,
         },
         {
-          label: "Menu Button",
+          label: "Menu button",
           value: ColumnTypes.MENU_BUTTON,
         },
         {
@@ -55,7 +59,7 @@ export default {
           value: ColumnTypes.NUMBER,
         },
         {
-          label: "Plain Text",
+          label: "Plain text",
           value: ColumnTypes.TEXT,
         },
         {
@@ -78,6 +82,8 @@ export default {
       updateHook: composePropertyUpdateHook([
         updateNumberColumnTypeTextAlignment,
         updateThemeStylesheetsInColumns,
+        updateMenuItemsSource,
+        updateCurrencyDefaultValues,
       ]),
       dependencies: ["primaryColumns", "columnOrder", "childStylesheet"],
       isBindProperty: false,
@@ -109,6 +115,7 @@ export default {
             ColumnTypes.DATE,
             ColumnTypes.IMAGE,
             ColumnTypes.NUMBER,
+            ColumnTypes.CURRENCY,
             ColumnTypes.TEXT,
             ColumnTypes.VIDEO,
             ColumnTypes.URL,
@@ -132,7 +139,7 @@ export default {
     },
     {
       propertyName: "displayText",
-      label: "Display Text",
+      label: "Display text",
       helpText: "The text to be displayed in the column",
       controlType: "TABLE_COMPUTE_VALUE",
       hidden: (props: TableWidgetProps, propertyPath: string) => {
@@ -148,7 +155,7 @@ export default {
       helpText:
         "The value computed & shown in each cell. Use {{currentRow}} to reference each row in the table. This property is not accessible outside the column settings.",
       propertyName: "computedValue",
-      label: "Computed Value",
+      label: "Computed value",
       controlType: "TABLE_COMPUTE_VALUE",
       additionalControlData: {
         isArrayValue: true,
@@ -164,6 +171,7 @@ export default {
           ColumnTypes.CHECKBOX,
           ColumnTypes.SWITCH,
           ColumnTypes.SELECT,
+          ColumnTypes.CURRENCY,
         ]);
       },
       dependencies: ["primaryColumns", "columnOrder"],
@@ -172,7 +180,7 @@ export default {
     },
     {
       propertyName: "inputFormat",
-      label: "Original Date Format",
+      label: "Date format",
       helpText: "Date format of incoming data to the column",
       controlType: "DROP_DOWN",
       options: [
@@ -263,7 +271,7 @@ export default {
       hidden: (props: TableWidgetProps, propertyPath: string) => {
         const baseProperty = getBasePropertyPath(propertyPath);
         const columnType = get(props, `${baseProperty}.columnType`, "");
-        return columnType !== "date";
+        return columnType !== ColumnTypes.DATE;
       },
       dependencies: ["primaryColumns", "columnOrder"],
       isBindProperty: true,
@@ -271,37 +279,13 @@ export default {
         type: ValidationTypes.ARRAY_OF_TYPE_OR_TYPE,
         params: {
           type: ValidationTypes.TEXT,
-          params: {
-            allowedValues: [
-              DateInputFormat.EPOCH,
-              DateInputFormat.MILLISECONDS,
-              "YYYY-MM-DD",
-              "YYYY-MM-DD HH:mm",
-              "YYYY-MM-DDTHH:mm:ss.sssZ",
-              "YYYY-MM-DDTHH:mm:ss",
-              "YYYY-MM-DD hh:mm:ss",
-              "Do MMM YYYY",
-              "DD/MM/YYYY",
-              "DD/MM/YYYY HH:mm",
-              "LLL",
-              "LL",
-              "D MMMM, YYYY",
-              "H:mm A D MMMM, YYYY",
-              "MM-DD-YYYY",
-              "DD-MM-YYYY",
-              "MM/DD/YYYY",
-              "DD/MM/YYYY",
-              "DD/MM/YY",
-              "MM/DD/YY",
-            ],
-          },
         },
       },
       isTriggerProperty: false,
     },
     {
       propertyName: "outputFormat",
-      label: "Display Date Format",
+      label: "Display format",
       helpText: "Date format to be shown to users",
       controlType: "DROP_DOWN",
       customJSControl: "TABLE_COMPUTE_VALUE",
@@ -392,7 +376,7 @@ export default {
       hidden: (props: TableWidgetProps, propertyPath: string) => {
         const baseProperty = getBasePropertyPath(propertyPath);
         const columnType = get(props, `${baseProperty}.columnType`, "");
-        return columnType !== "date";
+        return columnType !== ColumnTypes.DATE;
       },
       dependencies: ["primaryColumns", "columnType"],
       isBindProperty: true,
@@ -400,33 +384,139 @@ export default {
         type: ValidationTypes.ARRAY_OF_TYPE_OR_TYPE,
         params: {
           type: ValidationTypes.TEXT,
-          params: {
-            allowedValues: [
-              "Epoch",
-              "Milliseconds",
-              "YYYY-MM-DD",
-              "YYYY-MM-DD HH:mm",
-              "YYYY-MM-DDTHH:mm:ss.sssZ",
-              "YYYY-MM-DDTHH:mm:ss",
-              "YYYY-MM-DD hh:mm:ss",
-              "Do MMM YYYY",
-              "DD/MM/YYYY",
-              "DD/MM/YYYY HH:mm",
-              "LLL",
-              "LL",
-              "D MMMM, YYYY",
-              "H:mm A D MMMM, YYYY",
-              "MM-DD-YYYY",
-              "DD-MM-YYYY",
-              "MM/DD/YYYY",
-              "DD/MM/YYYY",
-              "DD/MM/YY",
-              "MM/DD/YY",
-            ],
-          },
         },
       },
       isTriggerProperty: false,
+    },
+    {
+      helpText: "Changes the type of currency",
+      propertyName: "currencyCode",
+      label: "Currency",
+      enableSearch: true,
+      dropdownHeight: "156px",
+      controlType: "DROP_DOWN",
+      customJSControl: "TABLE_COMPUTE_VALUE",
+      searchPlaceholderText: "Search by code or name",
+      options: CurrencyDropdownOptions,
+      virtual: true,
+      isJSConvertible: true,
+      isBindProperty: true,
+      isTriggerProperty: false,
+      validation: {
+        type: ValidationTypes.ARRAY_OF_TYPE_OR_TYPE,
+        params: {
+          type: ValidationTypes.TEXT,
+          params: {
+            default: "USD",
+            required: true,
+            allowedValues: CurrencyDropdownOptions.map(
+              (option) => option.value,
+            ),
+          },
+        },
+      },
+      hidden: (props: TableWidgetProps, propertyPath: string) => {
+        const baseProperty = getBasePropertyPath(propertyPath);
+        const columnType = get(props, `${baseProperty}.columnType`, "");
+        return columnType !== ColumnTypes.CURRENCY;
+      },
+      dependencies: ["primaryColumns", "columnType"],
+    },
+    {
+      helpText: "No. of decimals in currency input",
+      propertyName: "decimals",
+      label: "Decimals allowed",
+      controlType: "DROP_DOWN",
+      options: [
+        {
+          label: "0",
+          value: 0,
+        },
+        {
+          label: "1",
+          value: 1,
+        },
+        {
+          label: "2",
+          value: 2,
+        },
+      ],
+      isJSConvertible: false,
+      isBindProperty: true,
+      isTriggerProperty: false,
+      validation: {
+        type: ValidationTypes.NUMBER,
+        params: {
+          min: 0,
+          max: 2,
+          default: 0,
+          required: true,
+        },
+      },
+      hidden: (props: TableWidgetProps, propertyPath: string) => {
+        const baseProperty = getBasePropertyPath(propertyPath);
+        const columnType = get(props, `${baseProperty}.columnType`, "");
+        return columnType !== ColumnTypes.CURRENCY;
+      },
+      dependencies: ["primaryColumns", "columnType"],
+    },
+    {
+      propertyName: "thousandSeparator",
+      helpText: "formats the currency with a thousand separator",
+      label: "Thousand separator",
+      controlType: "SWITCH",
+      customJSControl: "TABLE_COMPUTE_VALUE",
+      dependencies: ["primaryColumns", "columnType"],
+      isJSConvertible: true,
+      isBindProperty: true,
+      isTriggerProperty: false,
+      validation: {
+        type: ValidationTypes.ARRAY_OF_TYPE_OR_TYPE,
+        params: {
+          type: ValidationTypes.BOOLEAN,
+        },
+      },
+      hidden: (props: TableWidgetProps, propertyPath: string) => {
+        const baseProperty = getBasePropertyPath(propertyPath);
+        const columnType = get(props, `${baseProperty}.columnType`, "");
+        return columnType !== ColumnTypes.CURRENCY;
+      },
+    },
+    {
+      propertyName: "notation",
+      helpText: "Displays the currency in standard or compact notation",
+      label: "Notation",
+      controlType: "DROP_DOWN",
+      customJSControl: "TABLE_COMPUTE_VALUE",
+      options: [
+        {
+          label: "Standard",
+          value: "standard",
+        },
+        {
+          label: "Compact",
+          value: "compact",
+        },
+      ],
+      dependencies: ["primaryColumns", "columnType"],
+      isJSConvertible: true,
+      isBindProperty: true,
+      isTriggerProperty: false,
+      validation: {
+        type: ValidationTypes.ARRAY_OF_TYPE_OR_TYPE,
+        params: {
+          type: ValidationTypes.TEXT,
+          params: {
+            default: "standard",
+            allowedValues: ["standard", "compact"],
+          },
+        },
+      },
+      hidden: (props: TableWidgetProps, propertyPath: string) => {
+        const baseProperty = getBasePropertyPath(propertyPath);
+        const columnType = get(props, `${baseProperty}.columnType`, "");
+        return columnType !== ColumnTypes.CURRENCY;
+      },
     },
   ],
 };

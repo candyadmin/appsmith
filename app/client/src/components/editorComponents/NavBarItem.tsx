@@ -3,10 +3,10 @@
 import React from "react";
 import styled from "styled-components";
 import { NavLink } from "react-router-dom";
-import AnalyticsUtil from "utils/AnalyticsUtil";
+import AnalyticsUtil from "ee/utils/AnalyticsUtil";
 import { Colors } from "constants/Colors";
 
-type MenuBarItemProps = {
+interface MenuBarItemProps {
   icon: Function;
   path: string;
   title: string;
@@ -18,7 +18,7 @@ type MenuBarItemProps = {
   highlight?: boolean;
   onClick?: Function;
   isActive: (currentPath: string, expectedPath: string) => boolean;
-};
+}
 
 type Props = MenuBarItemProps;
 
@@ -76,16 +76,8 @@ const ItemContainer = styled.div`
 
 class NavBarItem extends React.Component<Props> {
   render(): React.ReactNode {
-    const {
-      exact,
-      height,
-      icon,
-      isActive,
-      onClick,
-      path,
-      title,
-      width,
-    } = this.props;
+    const { exact, height, icon, isActive, onClick, path, title, width } =
+      this.props;
 
     return (
       <ItemContainer>

@@ -5,12 +5,10 @@ import {
   setGlobalSearchQuery,
   toggleShowGlobalSearchModal,
 } from "actions/globalSearchActions";
-import AnalyticsUtil from "utils/AnalyticsUtil";
-import WidgetFactory from "utils/WidgetFactory";
-import { ControlIcons } from "icons/ControlIcons";
+import AnalyticsUtil from "ee/utils/AnalyticsUtil";
+import WidgetFactory from "WidgetProvider/factory";
 import { getSelectedWidget } from "sagas/selectors";
-
-const QuestionIcon = ControlIcons.QUESTION;
+import { Icon } from "@appsmith/ads";
 
 function PropertyPaneHelpButton() {
   const selectedWidget = useSelector(getSelectedWidget);
@@ -32,7 +30,7 @@ function PropertyPaneHelpButton() {
 
   return (
     <button className="p-1 hover:bg-warmGray-100 group" onClick={onClick}>
-      <QuestionIcon className="w-4 h-4 text-trueGray-500" />
+      <Icon className="w-4 h-4 text-trueGray-500" name="question" />
     </button>
   );
 }

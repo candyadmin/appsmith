@@ -1,19 +1,18 @@
 import React from "react";
 import { connect } from "react-redux";
-import { RouteComponentProps } from "react-router";
-import { Plugin } from "api/PluginApi";
+import type { RouteComponentProps } from "react-router";
+import type { Plugin } from "api/PluginApi";
 import {
   getDatasourcesByPluginId,
   getPluginByPackageName,
-} from "selectors/entitiesSelector";
+} from "ee/selectors/entitiesSelector";
 import NotFound from "pages/common/NotFound";
-import { AppState } from "@appsmith/reducers";
+import type { AppState } from "ee/reducers";
 import { createDatasourceFromForm } from "actions/datasourceActions";
-import { SaaSAction } from "entities/Action";
+import type { SaaSAction } from "entities/Action";
 import { createActionRequest } from "actions/pluginActionActions";
-import { Datasource } from "entities/Datasource";
-import { createNewApiName } from "utils/AppsmithUtils";
-import { ActionDataState } from "reducers/entityReducers/actionsReducer";
+import type { Datasource } from "entities/Datasource";
+import type { ActionDataState } from "ee/reducers/entityReducers/actionsReducer";
 
 // Design
 import CenteredWrapper from "components/designSystems/appsmith/CenteredWrapper";
@@ -26,7 +25,7 @@ import {
   selectURLSlugs,
 } from "selectors/editorSelectors";
 import { INTEGRATION_TABS } from "constants/routes";
-import { integrationEditorURL } from "RouteBuilder";
+import { integrationEditorURL } from "ee/RouteBuilder";
 
 const IntegrationHomePage = styled.div`
   padding: 20px;
@@ -71,12 +70,14 @@ interface StateProps {
 }
 
 interface DispatchFunctions {
+  // TODO: Fix this the next time the file is edited
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   createDatasource: (data: any) => void;
   createAction: (data: Partial<SaaSAction>) => void;
 }
 
 type RouteProps = RouteComponentProps<{
-  pageId: string;
+  basePageId: string;
   pluginPackageName: string;
 }>;
 
@@ -88,22 +89,18 @@ class ListView extends React.Component<Props> {
 
   handleCreateNewAPI = (datasource: Datasource) => {
     const {
-      actions,
       location,
       match: {
-        params: { pageId },
+        params: { basePageId },
       },
     } = this.props;
     const params: string = location.search;
     let pgId = new URLSearchParams(params).get("importTo");
     if (!pgId) {
-      pgId = pageId;
+      pgId = basePageId;
     }
     if (pgId) {
-      const newApiName = createNewApiName(actions, pgId);
-
       this.props.createAction({
-        name: newApiName,
         pageId: pgId,
         pluginId: datasource.pluginId,
         datasource: {
@@ -140,7 +137,7 @@ class ListView extends React.Component<Props> {
           icon={"plus"}
           minimal
           onClick={() => this.handleCreateNewDatasource(plugin.id)}
-          text="New Datasource"
+          text="New datasource"
         />
 
         {datasources.map((datasource) => {
@@ -168,7 +165,7 @@ class ListView extends React.Component<Props> {
     const {
       history,
       match: {
-        params: { pageId },
+        params: { basePageId },
       },
     } = this.props;
     return (
@@ -178,7 +175,7 @@ class ListView extends React.Component<Props> {
           onBackButton={() =>
             history.push(
               integrationEditorURL({
-                pageId,
+                basePageId,
                 selectedTab: INTEGRATION_TABS.ACTIVE,
               }),
             )
@@ -212,8 +209,12 @@ const mapStateToProps = (state: AppState, props: RouteProps): StateProps => {
   };
 };
 
+// TODO: Fix this the next time the file is edited
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const mapDispatchToProps = (dispatch: any): DispatchFunctions => {
   return {
+    // TODO: Fix this the next time the file is edited
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     createDatasource: (data: any) => dispatch(createDatasourceFromForm(data)),
     createAction: (data: Partial<SaaSAction>) => {
       dispatch(createActionRequest(data));

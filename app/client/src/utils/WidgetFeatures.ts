@@ -1,17 +1,12 @@
-import { ReduxActionTypes } from "@appsmith/constants/ReduxActionConstants";
-import {
+import { ReduxActionTypes } from "ee/constants/ReduxActionConstants";
+import type {
   PropertyPaneConfig,
   PropertyPaneControlConfig,
-  PropertyPaneSectionConfig,
 } from "constants/PropertyControlConstants";
-import {
-  GridDefaults,
-  WidgetHeightLimits,
-  WidgetType,
-} from "constants/WidgetConstants";
-import { klona } from "klona/lite";
-import { WidgetProps } from "widgets/BaseWidget";
-import { WidgetConfiguration } from "widgets/constants";
+import type { WidgetType } from "constants/WidgetConstants";
+import { GridDefaults, WidgetHeightLimits } from "constants/WidgetConstants";
+import type { WidgetProps } from "widgets/BaseWidget";
+import type BaseWidget from "widgets/BaseWidget";
 
 export enum RegisteredWidgetFeatures {
   DYNAMIC_HEIGHT = "dynamicHeight",
@@ -21,6 +16,7 @@ interface WidgetFeatureConfig {
   active: boolean;
   defaultValue?: DynamicHeight;
   sectionIndex: number;
+  helperText?: (props?: WidgetProps) => PropertyPaneControlConfig["helperText"];
 }
 
 export type WidgetFeatures = Record<
@@ -55,20 +51,31 @@ export const WidgetFeatureProps: Record<
 
 export const WidgetFeaturePropertyEnhancements: Record<
   RegisteredWidgetFeatures,
-  (config: WidgetConfiguration) => Record<string, unknown>
+  (config: typeof BaseWidget) => Record<string, unknown>
 > = {
-  [RegisteredWidgetFeatures.DYNAMIC_HEIGHT]: (config: WidgetConfiguration) => {
+  [RegisteredWidgetFeatures.DYNAMIC_HEIGHT]: (widget: typeof BaseWidget) => {
+    const features = widget.getFeatures();
+    const defaults = widget.getDefaults();
+    const config = widget.getConfig();
+
     const newProperties: Partial<WidgetProps> = {};
     newProperties.dynamicHeight =
-      config.features?.dynamicHeight?.defaultValue || DynamicHeight.AUTO_HEIGHT;
+      features?.dynamicHeight?.defaultValue || DynamicHeight.AUTO_HEIGHT;
     if (config.isCanvas) {
       newProperties.dynamicHeight = DynamicHeight.AUTO_HEIGHT;
       newProperties.minDynamicHeight =
-        config.defaults.minDynamicHeight ||
+        defaults.minDynamicHeight ||
         WidgetHeightLimits.MIN_CANVAS_HEIGHT_IN_ROWS;
+      newProperties.maxDynamicHeight =
+        defaults.maxDynamicHeight || WidgetHeightLimits.MAX_HEIGHT_IN_ROWS;
       newProperties.shouldScrollContents = true;
+    } else {
+      newProperties.minDynamicHeight =
+        defaults.minDynamicHeight || WidgetHeightLimits.MIN_HEIGHT_IN_ROWS;
+      newProperties.maxDynamicHeight =
+        defaults.maxDynamicHeight || WidgetHeightLimits.MAX_HEIGHT_IN_ROWS;
     }
-    if (config.defaults.overflow) newProperties.overflow = "NONE";
+    if (defaults.overflow) newProperties.overflow = "NONE";
     return newProperties;
   },
 };
@@ -83,13 +90,12 @@ function findAndUpdatePropertyPaneControlConfig(
       sectionConfig.children.length > 0
     ) {
       Object.keys(propertyPaneUpdates).forEach((propertyName: string) => {
-        const controlConfigIndex:
-          | number
-          | undefined = sectionConfig.children?.findIndex(
-          (controlConfig: PropertyPaneConfig) =>
-            (controlConfig as PropertyPaneControlConfig).propertyName ===
-            propertyName,
-        );
+        const controlConfigIndex: number | undefined =
+          sectionConfig.children?.findIndex(
+            (controlConfig: PropertyPaneConfig) =>
+              (controlConfig as PropertyPaneControlConfig).propertyName ===
+              propertyName,
+          );
 
         if (
           controlConfigIndex !== undefined &&
@@ -294,9 +300,9 @@ const CONTAINER_SCROLL_HELPER_TEXT =
 
 export const PropertyPaneConfigTemplates: Record<
   RegisteredWidgetFeatures,
-  PropertyPaneConfig[]
+  (featureConfig: WidgetFeatureConfig) => PropertyPaneConfig[]
 > = {
-  [RegisteredWidgetFeatures.DYNAMIC_HEIGHT]: [
+  [RegisteredWidgetFeatures.DYNAMIC_HEIGHT]: (featureConfig) => [
     {
       helpText:
         "Auto Height: Configure the way the widget height reacts to content changes.",
@@ -316,11 +322,13 @@ export const PropertyPaneConfigTemplates: Record<
         "isCanvas",
       ],
       updateHook: updateMinMaxDynamicHeight,
+      //TODO: Canvas widgets should also use the helper text config of dynamic height feature
+      // instead of using a hardcoded string
       helperText: (props: WidgetProps) => {
         return props.isCanvas &&
           props.dynamicHeight === DynamicHeight.AUTO_HEIGHT
           ? CONTAINER_SCROLL_HELPER_TEXT
-          : "";
+          : featureConfig.helperText?.(props) || "";
       },
       options: [
         {
@@ -340,32 +348,3 @@ export const PropertyPaneConfigTemplates: Record<
     },
   ],
 };
-
-//TODO make this logic a lot cleaner
-export function disableWidgetFeatures(
-  widgetConfig: readonly PropertyPaneConfig[],
-  disabledWidgetFeatures?: string[],
-) {
-  if (!disabledWidgetFeatures || disabledWidgetFeatures.length <= 0)
-    return widgetConfig;
-
-  const clonedConfig = klona(widgetConfig);
-  const GeneralConfig = clonedConfig.find(
-    (sectionConfig) =>
-      (sectionConfig as PropertyPaneSectionConfig)?.sectionName === "General",
-  );
-
-  for (let i = 0; i < (GeneralConfig?.children?.length || -1); i++) {
-    const config = GeneralConfig?.children?.[i];
-    if (
-      disabledWidgetFeatures.indexOf(
-        (config as PropertyPaneControlConfig)?.propertyName || "",
-      ) > -1
-    ) {
-      GeneralConfig?.children?.splice(i, 1);
-      i--;
-    }
-  }
-
-  return clonedConfig;
-}

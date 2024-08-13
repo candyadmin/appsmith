@@ -1,6 +1,7 @@
 import React from "react";
-import styled from "constants/DefaultTheme";
+import styled from "styled-components";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
+
 const ItemWrapper = styled.div`
   padding-right: 0;
   margin: 8px 0 0 0;
@@ -10,7 +11,7 @@ const DroppableWrapper = styled.div`
   width: 250px;
 `;
 
-type RenderComponentProps = {
+interface RenderComponentProps {
   index: number;
   item: {
     label: string;
@@ -21,7 +22,7 @@ type RenderComponentProps = {
   updateOption: (index: number, value: string) => void;
   toggleVisibility?: (index: number) => void;
   onEdit?: (index: number) => void;
-};
+}
 
 interface DroppableComponentProps {
   items: Array<Record<string, unknown>>;
@@ -59,6 +60,8 @@ export class DroppableComponent extends React.Component<
     }
   }
 
+  // TODO: Fix this the next time the file is edited
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onDragEnd = (result: any) => {
     const { destination, source } = result;
     const items: Array<Record<string, unknown>> = [...this.state.items];
@@ -99,6 +102,8 @@ export class DroppableComponent extends React.Component<
               {...droppableProps}
             >
               {this.state.items.map(
+                // TODO: Fix this the next time the file is edited
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 (item: { id: string } & any, index: number) => {
                   return (
                     <Draggable

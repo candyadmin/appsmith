@@ -1,6 +1,7 @@
 import React from "react";
 import styled from "styled-components";
 import DataSourceHome from "./DatasourceHome";
+import type { ActionParentEntityTypeInterface } from "ee/entities/Engine/actionHelpers";
 
 const QueryHomePage = styled.div`
   display: flex;
@@ -13,34 +14,47 @@ const QueryHomePage = styled.div`
   }
 `;
 
-type QueryHomeScreenProps = {
-  pageId: string;
+interface QueryHomeScreenProps {
+  editorId: string;
+  editorType: string;
+  parentEntityId: string;
+  parentEntityType: ActionParentEntityTypeInterface;
   isCreating: boolean;
   location: {
     search: string;
   };
-  history: {
-    replace: (data: string) => void;
-    push: (data: string) => void;
-  };
+  showMostPopularPlugins?: boolean;
+  // TODO: Fix this the next time the file is edited
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   showUnsupportedPluginDialog: (callback: any) => void;
-};
+  isAirgappedInstance?: boolean;
+}
 
 class QueryHomeScreen extends React.Component<QueryHomeScreenProps> {
   render() {
     const {
-      history,
+      editorId,
+      editorType,
+      isAirgappedInstance,
+      isCreating,
       location,
-      pageId,
+      parentEntityId,
+      parentEntityType,
+      showMostPopularPlugins,
       showUnsupportedPluginDialog,
     } = this.props;
 
     return (
       <QueryHomePage>
         <DataSourceHome
-          history={history}
+          editorId={editorId}
+          editorType={editorType}
+          isAirgappedInstance={isAirgappedInstance}
+          isCreating={isCreating}
           location={location}
-          pageId={pageId}
+          parentEntityId={parentEntityId}
+          parentEntityType={parentEntityType}
+          showMostPopularPlugins={showMostPopularPlugins}
           showUnsupportedPluginDialog={showUnsupportedPluginDialog}
         />
       </QueryHomePage>

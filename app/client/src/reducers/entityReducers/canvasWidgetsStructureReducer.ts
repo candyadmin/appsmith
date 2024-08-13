@@ -1,18 +1,15 @@
 import { createImmerReducer } from "utils/ReducerUtils";
-import {
-  ReduxActionTypes,
+import type {
   UpdateCanvasPayload,
   ReduxAction,
-} from "@appsmith/constants/ReduxActionConstants";
-import { WidgetProps } from "widgets/BaseWidget";
-import { CanvasWidgetStructure } from "widgets/constants";
-import { pick } from "lodash";
-import {
-  MAIN_CONTAINER_WIDGET_ID,
-  WidgetType,
-  WIDGET_DSL_STRUCTURE_PROPS,
-} from "constants/WidgetConstants";
+} from "ee/constants/ReduxActionConstants";
+import { ReduxActionTypes } from "ee/constants/ReduxActionConstants";
+import type { WidgetProps } from "widgets/BaseWidget";
+import type { WidgetType } from "constants/WidgetConstants";
+import { MAIN_CONTAINER_WIDGET_ID } from "constants/WidgetConstants";
 import { CANVAS_DEFAULT_MIN_ROWS } from "constants/AppConstants";
+import { denormalize } from "utils/canvasStructureHelpers";
+import { klona } from "klona";
 
 export type FlattenedWidgetProps<orType = never> =
   | (WidgetProps & {
@@ -20,14 +17,14 @@ export type FlattenedWidgetProps<orType = never> =
     })
   | orType;
 
-export type CanvasWidgetsStructureReduxState = {
+export interface CanvasWidgetsStructureReduxState {
   children?: CanvasWidgetsStructureReduxState[];
   type: WidgetType;
   widgetId: string;
   parentId?: string;
   bottomRow: number;
   topRow: number;
-};
+}
 
 const initialState: CanvasWidgetsStructureReduxState = {
   type: "CANVAS_WIDGET",
@@ -35,31 +32,6 @@ const initialState: CanvasWidgetsStructureReduxState = {
   topRow: 0,
   bottomRow: CANVAS_DEFAULT_MIN_ROWS,
 };
-
-/**
- * Generate dsl type skeletal structure from canvas widgets
- * @param rootWidgetId
- * @param widgets
- * @returns
- */
-function denormalize(
-  rootWidgetId: string,
-  widgets: Record<string, FlattenedWidgetProps>,
-): CanvasWidgetStructure {
-  const rootWidget = widgets[rootWidgetId];
-
-  const children = (rootWidget.children || []).map((childId) =>
-    denormalize(childId, widgets),
-  );
-
-  const staticProps = Object.keys(WIDGET_DSL_STRUCTURE_PROPS);
-
-  const structure = pick(rootWidget, staticProps) as CanvasWidgetStructure;
-
-  structure.children = children;
-
-  return structure;
-}
 
 const canvasWidgetsStructureReducer = createImmerReducer(initialState, {
   [ReduxActionTypes.INIT_CANVAS_LAYOUT]: (
@@ -73,6 +45,9 @@ const canvasWidgetsStructureReducer = createImmerReducer(initialState, {
     action: ReduxAction<UpdateCanvasPayload>,
   ) => {
     return denormalize("0", action.payload.widgets);
+  },
+  [ReduxActionTypes.RESET_EDITOR_REQUEST]: () => {
+    return klona(initialState);
   },
 });
 

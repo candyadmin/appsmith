@@ -22,9 +22,11 @@ const Record = styled(Card)`
   }
 `;
 
-type JSONOutputProps = {
+interface JSONOutputProps {
+  // TODO: Fix this the next time the file is edited
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   src: Record<string, any>[];
-};
+}
 
 type Props = JSONOutputProps;
 
@@ -41,6 +43,8 @@ class JSONOutput extends React.Component<Props> {
       },
       collapsed: 2,
       collapseStringsAfterLength: 20,
+      // TODO: Fix this the next time the file is edited
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       shouldCollapse: (field: any) => {
         const index = field.name * 1;
         return index >= 2;

@@ -1,29 +1,30 @@
 import React, { useState, useEffect, useCallback } from "react";
 import styled from "styled-components";
 import { InputGroup } from "@blueprintjs/core";
-import { debounce } from "lodash";
+import { debounce, isNaN } from "lodash";
 
 import CustomizedDropdown from "pages/common/CustomizedDropdown";
 import { Directions } from "utils/helpers";
 import { Colors } from "constants/Colors";
 import { Skin } from "constants/DefaultTheme";
 import AutoToolTipComponent from "../../../cellComponents/AutoToolTipComponent";
-import {
-  OperatorTypes,
-  Condition,
-  Operator,
-  ReactTableFilter,
-} from "../../../Constants";
-import { DropdownOption } from "./index";
+import type { Condition, Operator, ReactTableFilter } from "../../../Constants";
+import { OperatorTypes } from "../../../Constants";
+import type { DropdownOption } from "./index";
 import { RenderOptionWrapper } from "../../../TableStyledWrappers";
 
 //TODO(abhinav): Fix this cross import between widgets
 import DatePickerComponent from "widgets/DatePickerWidget2/component";
 import { TimePrecision } from "widgets/DatePickerWidget2/constants";
 import { ColumnTypes, ReadOnlyColumnTypes } from "../../../../constants";
+import { importRemixIcon } from "@appsmith/ads-old";
 
-import CloseIcon from "remixicon-react/CloseCircleFillIcon";
-import ArrowDownIcon from "remixicon-react/ArrowDownSLineIcon";
+const CloseIcon = importRemixIcon(
+  async () => import("remixicon-react/CloseCircleFillIcon"),
+);
+const ArrowDownIcon = importRemixIcon(
+  async () => import("remixicon-react/ArrowDownSLineIcon"),
+);
 
 const LabelWrapper = styled.div`
   width: 95px;
@@ -307,12 +308,15 @@ function RenderInput(props: {
   );
 }
 
-type CascadeFieldProps = {
+interface CascadeFieldProps {
   columns: DropdownOption[];
   column: string;
   condition: Condition;
+  // TODO: Fix this the next time the file is edited
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   value: any;
   operator: Operator;
+  id: string;
   index: number;
   hasAnyFilters: boolean;
   applyFilter: (
@@ -323,11 +327,13 @@ type CascadeFieldProps = {
   removeFilter: (index: number) => void;
   accentColor: string;
   borderRadius: string;
-};
+}
 
-type CascadeFieldState = {
+interface CascadeFieldState {
   column: string;
   condition: Condition;
+  // TODO: Fix this the next time the file is edited
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   value: any;
   operator: Operator;
   conditions: DropdownOption[];
@@ -337,7 +343,7 @@ type CascadeFieldState = {
   isDeleted: boolean;
   isUpdate: boolean;
   isOperatorChange: boolean;
-};
+}
 
 const getConditions = (props: CascadeFieldProps) => {
   const columnValue = props.column || "";
@@ -422,6 +428,8 @@ function CaseCaseFieldReducer(
   state: CascadeFieldState,
   action: {
     type: CascadeFieldAction;
+    // TODO: Fix this the next time the file is edited
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     payload?: any;
   },
 ) {
@@ -475,14 +483,15 @@ function CaseCaseFieldReducer(
 }
 
 function CascadeField(props: CascadeFieldProps) {
-  const memoizedState = React.useMemo(() => calculateInitialState(props), [
-    props,
-  ]);
+  const memoizedState = React.useMemo(
+    () => calculateInitialState(props),
+    [props],
+  );
   return <Fields state={memoizedState} {...props} />;
 }
 
 function Fields(props: CascadeFieldProps & { state: CascadeFieldState }) {
-  const { applyFilter, hasAnyFilters, index, removeFilter } = props;
+  const { applyFilter, hasAnyFilters, id, index, removeFilter } = props;
   const [state, dispatch] = React.useReducer(CaseCaseFieldReducer, props.state);
   const handleRemoveFilter = () => {
     dispatch({ type: CascadeFieldActionTypes.DELETE_FILTER });
@@ -500,9 +509,10 @@ function Fields(props: CascadeFieldProps & { state: CascadeFieldState }) {
     });
   };
   const onValueChange = (value: string) => {
+    const parsedValue = value && !isNaN(Number(value)) ? Number(value) : value;
     dispatch({
       type: CascadeFieldActionTypes.CHANGE_VALUE,
-      payload: value,
+      payload: parsedValue,
     });
   };
   const onDateSelected = (date: string) => {
@@ -534,7 +544,7 @@ function Fields(props: CascadeFieldProps & { state: CascadeFieldState }) {
   useEffect(() => {
     if (!isDeleted && isUpdate) {
       applyFilter(
-        { operator, column, condition, value },
+        { id, operator, column, condition, value },
         index,
         isOperatorChange,
       );

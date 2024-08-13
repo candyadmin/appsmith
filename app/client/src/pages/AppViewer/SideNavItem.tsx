@@ -1,8 +1,9 @@
-import React, { ReactNode } from "react";
+import type { ReactNode } from "react";
+import React from "react";
 import styled from "styled-components";
 import { NavLink, useRouteMatch } from "react-router-dom";
 import { MenuItem, Classes } from "@blueprintjs/core";
-import AnalyticsUtil from "utils/AnalyticsUtil";
+import AnalyticsUtil from "ee/utils/AnalyticsUtil";
 
 const Content = styled.div<{ collapsed: boolean }>`
   display: flex;
@@ -13,14 +14,14 @@ const Content = styled.div<{ collapsed: boolean }>`
   }
 `;
 
-export type SideNavItemProps = {
+export interface SideNavItemProps {
   id: string;
   icon?: ReactNode;
   text: string;
   path: string;
   loading: boolean;
   showText?: boolean;
-};
+}
 
 export function SideNavItem(props: SideNavItemProps) {
   const match = useRouteMatch({

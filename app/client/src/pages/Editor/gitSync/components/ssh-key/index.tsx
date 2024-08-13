@@ -1,23 +1,11 @@
-import { Colors } from "constants/Colors";
 import {
   createMessage,
   SSH_KEY,
   SSH_KEY_GENERATED,
-} from "@appsmith/constants/messages";
+} from "ee/constants/messages";
 import React, { useCallback, useState } from "react";
-import {
-  Icon,
-  IconSize,
-  Menu,
-  Toaster,
-  Text,
-  TextType,
-  Variant,
-} from "design-system";
-import Key2LineIcon from "remixicon-react/Key2LineIcon";
 import { Space } from "pages/Editor/gitSync/components/StyledComponents";
-import AnalyticsUtil from "utils/AnalyticsUtil";
-import { Position } from "@blueprintjs/core";
+import AnalyticsUtil from "ee/utils/AnalyticsUtil";
 import { useSSHKeyPair } from "../../hooks";
 import {
   DeployedKeyContainer,
@@ -25,23 +13,31 @@ import {
   KeyText,
   KeyType,
   MoreMenuWrapper,
-  MoreOptionsContainer,
-  RegenerateOptionsHeader,
 } from "./StyledComponents";
 import { CopySSHKey } from "./CopySSHKey";
 import { supportedKeyTypeList } from "./SupportedKeyTypeList";
 import getNotificationBanner from "./getNotificationBanner";
 import { getConfirmMenuItem } from "./getConfirmMenuItem";
-import { getMenuItems } from "./getMenuItems";
-import { SSHKeyType } from "actions/gitSyncActions";
+import type { SSHKeyType } from "actions/gitSyncActions";
+import {
+  Button,
+  toast,
+  Menu,
+  MenuTrigger,
+  MenuItem,
+  MenuContent,
+  Text,
+  Icon,
+  MenuGroupName,
+} from "@appsmith/ads";
 
-type KeysProps = {
+interface KeysProps {
   copyToClipboard: () => void;
   deployKeyDocUrl: string;
   showCopied: boolean;
   SSHKeyPair: string;
   isImport?: boolean;
-};
+}
 
 const defaultKeyTypes: SSHKeyType[] = [
   {
@@ -71,7 +67,6 @@ function Keys(props: KeysProps) {
     AnalyticsUtil.logEvent("GS_GIT_DOCUMENTATION_LINK_CLICK", {
       source: "SSH_KEY_ON_GIT_CONNECTION_TAB",
     });
-    window.open(deployKeyDocUrl, "_blank");
   };
   const regenerateKey = useCallback(() => {
     AnalyticsUtil.logEvent("GS_REGENERATE_SSH_KEY_CONFIRM_CLICK", {
@@ -82,77 +77,90 @@ function Keys(props: KeysProps) {
     setShowConfirmation(false);
     setIsMenuOpen(false);
     setShowKeyGeneratedMessage(true);
-    Toaster.show({
-      text: createMessage(SSH_KEY_GENERATED),
-      variant: Variant.success,
+    toast.show(createMessage(SSH_KEY_GENERATED), {
+      kind: "success",
     });
   }, [newKeyType]);
+
+  const handleMenuClose = () => {
+    setShowConfirmation(false);
+    setIsMenuOpen(false);
+  };
+
   return (
     <>
-      <Space size={7} />
-      <Text color={Colors.GREY_9} type={TextType.P1}>
+      <Space size={2} />
+      <Text color="var(--ads-v2-color-border-brand-secondary)" renderAs="label">
         {createMessage(SSH_KEY)}
       </Text>
       <FlexRow style={{ position: "relative" }}>
-        <DeployedKeyContainer $marginTop={4}>
+        <DeployedKeyContainer $marginTop={1}>
           <FlexRow>
-            <Key2LineIcon
-              color={Colors.DOVE_GRAY2}
-              size={20}
-              style={{ marginTop: -1, marginRight: 4 }}
+            <Icon
+              color="var(--ads-v2-color-fg)"
+              name="key-2-line"
+              size="md"
+              style={{ marginTop: -5, marginRight: 4 }}
             />
-            <KeyType keyType={exactKeyType}>{keyType}</KeyType>
-            <KeyText keyType={exactKeyType}>{keyText}</KeyText>
+            <KeyType>{keyType}</KeyType>
+            <KeyText>{keyText}</KeyText>
             {CopySSHKey(showCopied, copyToClipboard)}
           </FlexRow>
         </DeployedKeyContainer>
         <MoreMenuWrapper>
           <Menu
-            className="more"
-            onClosing={() => {
-              setIsMenuOpen(false);
-              setShowConfirmation(false);
+            onOpenChange={(open) => {
+              if (!open && !showConfirmation) {
+                setIsMenuOpen(false);
+              }
             }}
-            onOpening={() => {
-              setShowConfirmation(false);
-            }}
-            position={Position.BOTTOM}
-            target={
-              <MoreOptionsContainer>
-                <Icon
-                  fillColor={Colors.DARK_GRAY}
-                  hoverFillColor={Colors.GRAY_900}
-                  name="more-2-fill"
-                  onClick={() => {
-                    AnalyticsUtil.logEvent("GS_REGENERATE_SSH_KEY_MORE_CLICK");
-                    setShowConfirmation(false);
-                    setIsMenuOpen(!isMenuOpen);
-                  }}
-                  size={IconSize.XXXXL}
-                />
-              </MoreOptionsContainer>
-            }
+            open={isMenuOpen}
           >
-            {isMenuOpen && !showConfirmation && (
-              <>
-                <RegenerateOptionsHeader>
-                  Regenerate keys
-                </RegenerateOptionsHeader>
-                {getMenuItems(
-                  supportedKeys,
-                  setShowConfirmation,
-                  setNewKeyType,
-                )}
-              </>
-            )}
-            {isMenuOpen &&
-              showConfirmation &&
-              getConfirmMenuItem(regenerateKey)}
+            <MenuTrigger>
+              <Button
+                isIconButton
+                kind="tertiary"
+                onClick={() => {
+                  AnalyticsUtil.logEvent("GS_REGENERATE_SSH_KEY_MORE_CLICK");
+                  setShowConfirmation(false);
+                  setIsMenuOpen(!isMenuOpen);
+                }}
+                size="md"
+                startIcon="more-2-fill"
+              />
+            </MenuTrigger>
+            <MenuContent
+              align="end"
+              onEscapeKeyDown={handleMenuClose}
+              onInteractOutside={handleMenuClose}
+              width="250px"
+            >
+              <MenuGroupName>Regenerate keys</MenuGroupName>
+              {!showConfirmation &&
+                supportedKeys.map((supportedKey) => (
+                  <MenuItem
+                    className={`t--regenerate-sshkey-${supportedKey.protocolName}`}
+                    endIcon={supportedKey.generated ? "check-line" : undefined}
+                    key={`supported-key-${supportedKey.protocolName}-menu-item`}
+                    onSelect={() => {
+                      setShowConfirmation(true);
+                      setNewKeyType(supportedKey.protocolName);
+                      setIsMenuOpen(true);
+                    }}
+                  >
+                    {supportedKey.text}
+                  </MenuItem>
+                ))}
+              {isMenuOpen &&
+                showConfirmation &&
+                getConfirmMenuItem(regenerateKey)}
+            </MenuContent>
           </Menu>
         </MoreMenuWrapper>
       </FlexRow>
       {showKeyGeneratedMessage &&
         getNotificationBanner(
+          deployKeyDocUrl,
           learnMoreClickHandler,
           setShowKeyGeneratedMessage,
         )}

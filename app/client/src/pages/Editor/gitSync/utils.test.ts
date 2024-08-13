@@ -6,7 +6,7 @@ import {
   isValidGitRemoteUrl,
   removeSpecialChars,
 } from "./utils";
-import { ApplicationVersion } from "actions/applicationActions";
+import { ApplicationVersion } from "ee/actions/applicationActions";
 
 const validUrls = [
   "git@github.com:user/project.git",
@@ -29,6 +29,10 @@ const validUrls = [
   "git@abcd.org:org__v3/(((something)/(other)/(thing).git",
   "git@gitlab-abcd.test.org:org__org/repoName.git",
   "git@gitlab__abcd.test.org:org__org/repoName.git",
+  "git@ssh.dev.azure.com:v3/something/with%20space%20(some)/geo-mantis",
+  "git@ssh.dev.azure.com:v3/something/with%20space%20some/geo-mantis",
+  "user@host.xz:path/to/repo.git",
+  "org-987654321@github.com:org_name/repository_name.git",
 ];
 
 const invalidUrls = [
@@ -60,13 +64,12 @@ const invalidUrls = [
   "host.xz:/path/to/repo.git/",
   "user@host.xz:~user/path/to/repo.git/",
   "host.xz:~user/path/to/repo.git/",
-  "user@host.xz:path/to/repo.git",
   "host.xz:path/to/repo.git",
   "rsync://host.xz/path/to/repo.git/",
 ];
 
 describe("gitSync utils", () => {
-  describe("getIsStartingWithRemoteBranches", function() {
+  describe("getIsStartingWithRemoteBranches", function () {
     it("returns true when only remote starts with origin/", () => {
       const actual = getIsStartingWithRemoteBranches(
         "whatever",
@@ -220,8 +223,10 @@ describe("gitSync utils", () => {
         appIsExample: false,
         applicationVersion: ApplicationVersion.DEFAULT,
         defaultPageId: "",
+        defaultBasePageId: "",
         slug: "",
         id: "",
+        baseId: "",
         isAutoUpdate: false,
         isManualUpdate: false,
         name: "",
@@ -241,7 +246,9 @@ describe("gitSync utils", () => {
         appIsExample: false,
         applicationVersion: ApplicationVersion.DEFAULT,
         defaultPageId: "",
+        defaultBasePageId: "",
         id: "",
+        baseId: "",
         slug: "",
         isAutoUpdate: true,
         isManualUpdate: false,
@@ -262,7 +269,9 @@ describe("gitSync utils", () => {
         appIsExample: false,
         applicationVersion: ApplicationVersion.DEFAULT,
         defaultPageId: "",
+        defaultBasePageId: "",
         id: "",
+        baseId: "",
         slug: "",
         isAutoUpdate: true,
         isManualUpdate: true,
@@ -283,7 +292,9 @@ describe("gitSync utils", () => {
         appIsExample: false,
         applicationVersion: ApplicationVersion.DEFAULT,
         defaultPageId: "",
+        defaultBasePageId: "",
         id: "",
+        baseId: "",
         slug: "",
         isAutoUpdate: false,
         isManualUpdate: true,

@@ -1,12 +1,14 @@
-import { createImmerReducer } from "utils/ReducerUtils";
-import {
-  ReduxActionTypes,
+import type {
   ReduxAction,
   ShowPropertyPanePayload,
-} from "@appsmith/constants/ReduxActionConstants";
+} from "ee/constants/ReduxActionConstants";
+import { ReduxActionTypes } from "ee/constants/ReduxActionConstants";
 import { DEFAULT_PROPERTY_PANE_WIDTH } from "constants/AppConstants";
+import { createImmerReducer } from "utils/ReducerUtils";
 
-export type SelectedPropertyPanel = { [path: string]: number };
+export interface SelectedPropertyPanel {
+  [path: string]: number;
+}
 
 const initialState: PropertyPaneReduxState = {
   isVisible: false,
@@ -75,6 +77,12 @@ const propertyPaneReducer = createImmerReducer(initialState, {
     action: ReduxAction<number>,
   ) => {
     state.width = action.payload;
+  },
+  [ReduxActionTypes.SET_FOCUSABLE_PROPERTY_FIELD]: (
+    state: PropertyPaneReduxState,
+    action: ReduxAction<{ path: string }>,
+  ) => {
+    state.focusedProperty = action.payload.path;
   },
   [ReduxActionTypes.SET_SELECTED_PANEL_PROPERTY]: (
     state: PropertyPaneReduxState,

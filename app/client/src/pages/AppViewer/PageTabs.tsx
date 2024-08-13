@@ -2,54 +2,66 @@ import React, { useRef, useEffect, useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import styled from "styled-components";
 import { get } from "lodash";
-import {
+import type {
   ApplicationPayload,
   Page,
-} from "@appsmith/constants/ReduxActionConstants";
+} from "ee/constants/ReduxActionConstants";
 import { isEllipsisActive, trimQueryString } from "utils/helpers";
-import { getTypographyByKey, TooltipComponent } from "design-system";
-
-import { getAppMode } from "selectors/applicationSelectors";
+import { getTypographyByKey, TooltipComponent } from "@appsmith/ads-old";
+import { getAppMode } from "ee/selectors/applicationSelectors";
 import { useSelector } from "react-redux";
 import { getSelectedAppTheme } from "selectors/appThemingSelectors";
 import { useHref } from "pages/Editor/utils";
 import { APP_MODE } from "entities/App";
-import { builderURL, viewerURL } from "RouteBuilder";
+import { builderURL, viewerURL } from "ee/RouteBuilder";
+import {
+  getMenuItemBackgroundColorWhenActive,
+  getMenuItemBackgroundColorOnHover,
+  getMenuItemTextColor,
+} from "./utils";
+import type { NavigationSetting } from "constants/AppConstants";
+import { NAVIGATION_SETTINGS } from "constants/AppConstants";
 
-const PageTab = styled(NavLink)`
+const PageTab = styled(NavLink)<{
+  primaryColor: string;
+  navColorStyle: NavigationSetting["colorStyle"];
+}>`
   display: flex;
   max-width: 170px;
   align-self: flex-end;
   cursor: pointer;
   text-decoration: none;
+  transition: all 0.3s ease-in-out;
+  padding: 0 10px;
+  border-radius: 4px;
+  background-color: transparent;
+
   &:hover {
     text-decoration: none;
+    background-color: ${({ navColorStyle, primaryColor }) =>
+      getMenuItemBackgroundColorOnHover(primaryColor, navColorStyle)};
+  }
+
+  &.is-active {
+    background-color: ${({ navColorStyle, primaryColor }) =>
+      getMenuItemBackgroundColorWhenActive(primaryColor, navColorStyle)};
   }
 `;
 
-const StyledBottomBorder = styled.div<{ primaryColor: string }>`
-  position: relative;
-  transition: all 0.3s ease-in-out;
-  height: 2px;
-  width: 100%;
-  left: -100%;
-  background-color: ${({ primaryColor }) => primaryColor};
-  ${PageTab}:hover & {
-    position: relative;
-    width: 100%;
-    left: 0;
-  }
-`;
-
-const StyleTabText = styled.div`
+const StyleTabText = styled.div<{
+  primaryColor: string;
+  navColorStyle: NavigationSetting["colorStyle"];
+}>`
   overflow: hidden;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   ${getTypographyByKey("h6")}
-  color: ${(props) => props.theme.colors.header.tabText};
-  height: ${(props) => `calc(${props.theme.smallHeaderHeight})`};
+  color: ${({ navColorStyle, primaryColor }) =>
+    getMenuItemTextColor(primaryColor, navColorStyle, true)};
+  height: ${(props) => `calc(${props.theme.pageTabsHeight})`};
+
   & span {
     height: 100%;
     max-width: 138px;
@@ -59,30 +71,30 @@ const StyleTabText = styled.div`
     display: flex;
     align-items: center;
   }
-  ${PageTab}.is-active & {
-    color: ${(props) => props.theme.colors.header.activeTabText};
-    ${StyledBottomBorder} {
-      left: 0;
-    }
+
+  ${PageTab}:hover &, ${PageTab}.is-active & {
+    color: ${({ navColorStyle, primaryColor }) =>
+      getMenuItemTextColor(primaryColor, navColorStyle)};
   }
 `;
 
 function PageTabName({
   name,
+  navColorStyle,
   primaryColor,
 }: {
   name: string;
   primaryColor: string;
+  navColorStyle: NavigationSetting["colorStyle"];
 }) {
   const tabNameRef = useRef<HTMLSpanElement>(null);
   const [ellipsisActive, setEllipsisActive] = useState(false);
   const tabNameText = (
-    <StyleTabText>
+    <StyleTabText navColorStyle={navColorStyle} primaryColor={primaryColor}>
       <div className="relative flex items-center justify-center flex-grow">
         <span ref={tabNameRef}>{name}</span>
         {ellipsisActive && "..."}
       </div>
-      <StyledBottomBorder primaryColor={primaryColor} />
     </StyleTabText>
   );
 
@@ -128,16 +140,16 @@ function PageTabContainer({
   return <div ref={tabContainerRef}>{children}</div>;
 }
 
-type Props = {
+interface Props {
   appPages: Page[];
   currentApplicationDetails?: ApplicationPayload;
   measuredTabsRef: (ref: HTMLElement | null) => void;
   tabsScrollable: boolean;
   setShowScrollArrows: () => void;
-};
+}
 
 export function PageTabs(props: Props) {
-  const { appPages } = props;
+  const { appPages, currentApplicationDetails } = props;
   const location = useLocation();
   const { pathname } = location;
   const [query, setQuery] = useState("");
@@ -148,18 +160,24 @@ export function PageTabs(props: Props) {
 
   return (
     <div
-      className="flex w-full hidden-scrollbar gap-x-8"
+      className="flex w-full hidden-scrollbar gap-x-4"
       ref={props.measuredTabsRef}
     >
       {appPages.map((page) => {
         return (
           <PageTabContainer
-            isTabActive={pathname.indexOf(page.pageId) > -1}
+            isTabActive={pathname.indexOf(page.basePageId) > -1}
             key={page.pageId}
             setShowScrollArrows={props.setShowScrollArrows}
             tabsScrollable={props.tabsScrollable}
           >
-            <PageTabItem page={page} query={query} />
+            <PageTabItem
+              navigationSetting={
+                currentApplicationDetails?.applicationDetail?.navigationSetting
+              }
+              page={page}
+              query={query}
+            />
           </PageTabContainer>
         );
       })}
@@ -167,17 +185,34 @@ export function PageTabs(props: Props) {
   );
 }
 
-function PageTabItem({ page, query }: { page: Page; query: string }) {
+function PageTabItem({
+  navigationSetting,
+  page,
+  query,
+}: {
+  page: Page;
+  query: string;
+  navigationSetting?: NavigationSetting;
+}) {
   const appMode = useSelector(getAppMode);
   const pageURL = useHref(
     appMode === APP_MODE.PUBLISHED ? viewerURL : builderURL,
-    { pageId: page.pageId },
+    { basePageId: page.basePageId },
   );
   const selectedTheme = useSelector(getSelectedAppTheme);
+  const navColorStyle =
+    navigationSetting?.colorStyle || NAVIGATION_SETTINGS.COLOR_STYLE.LIGHT;
+
   return (
     <PageTab
       activeClassName="is-active"
       className="t--page-switch-tab"
+      navColorStyle={navColorStyle}
+      primaryColor={get(
+        selectedTheme,
+        "properties.colors.primaryColor",
+        "inherit",
+      )}
       to={{
         pathname: trimQueryString(pageURL),
         search: query,
@@ -185,6 +220,7 @@ function PageTabItem({ page, query }: { page: Page; query: string }) {
     >
       <PageTabName
         name={page.pageName}
+        navColorStyle={navColorStyle}
         primaryColor={get(
           selectedTheme,
           "properties.colors.primaryColor",

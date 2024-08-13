@@ -1,23 +1,24 @@
 import React from "react";
 import styled from "styled-components";
 import { connect } from "react-redux";
-import { AppState } from "@appsmith/reducers";
-import { getPluginTemplates } from "selectors/entitiesSelector";
+import type { AppState } from "ee/reducers";
+import { getPluginTemplates } from "ee/selectors/entitiesSelector";
+import AnalyticsUtil from "ee/utils/AnalyticsUtil";
 
 const Container = styled.div`
   display: flex;
-  padding: 16px 24px;
+  /* padding: 16px 24px; */
   flex: 1;
-  border-radius: 4px;
+  border-radius: var(--ads-v2-border-radius);
   flex-direction: column;
-  color: #4e5d78;
+  color: var(--ads-v2-color-fg);
 `;
 
 const BulletPoint = styled.div`
   height: 4px;
   width: 4px;
   border-radius: 2px;
-  background-color: #c4c4c4;
+  background-color: var(--ads-v2-color-fg);
 `;
 
 const Item = styled.div`
@@ -30,23 +31,29 @@ const Row = styled.div`
   display: flex;
   align-items: center;
   flex-direction: row;
-  padding: 9px;
+  padding: var(--ads-v2-spaces-4);
   width: 108px;
+  margin-top: var(--ads-v2-spaces-2);
   cursor: pointer;
 
   :hover {
-    background-color: #ebeff2;
+    background-color: var(--ads-v2-color-bg-subtle);
+    border-radius: var(--ads-v2-border-radius);
   }
 `;
 
 interface TemplateMenuProps {
+  // TODO: Fix this the next time the file is edited
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   createTemplate: (template: any) => void;
   pluginId: string;
 }
 
-type ReduxProps = {
+interface ReduxProps {
+  // TODO: Fix this the next time the file is edited
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   allPluginTemplates: Record<string, any>;
-};
+}
 
 type Props = TemplateMenuProps & ReduxProps;
 
@@ -82,10 +89,8 @@ class TemplateMenu extends React.Component<Props> {
         }}
         tabIndex={0}
       >
-        <div style={{ fontSize: 14 }}>
-          Click here to start with a blank state or select a template.
-        </div>
-        <div style={{ marginTop: "6px" }}>
+        <div>Click here to start with a blank state or select a template.</div>
+        <div>
           {Object.entries(pluginTemplates).map((template) => {
             const templateKey = template[0];
 
@@ -95,6 +100,9 @@ class TemplateMenu extends React.Component<Props> {
                 onClick={(e) => {
                   const template = this.fetchTemplate(templateKey);
                   createTemplate(template);
+                  AnalyticsUtil.logEvent("QUERY_TEMPLATE_SELECTED", {
+                    templateType: templateKey,
+                  });
                   e.stopPropagation();
                 }}
               >

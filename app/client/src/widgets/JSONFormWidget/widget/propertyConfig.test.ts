@@ -1,4 +1,4 @@
-import { OnButtonClickProps } from "components/propertyControls/ButtonControl";
+import type { OnButtonClickProps } from "components/propertyControls/ButtonControl";
 import { set } from "lodash";
 import { EVALUATION_PATH } from "utils/DynamicBindingUtils";
 
@@ -52,12 +52,12 @@ describe(".onGenerateFormClick", () => {
       schemaTestData.initialDataset.dataSource,
     );
 
-    const params = ({
+    const params = {
       batchUpdateProperties: mockBatchUpdateProperties,
       props: {
         widgetProperties,
       },
-    } as unknown) as OnButtonClickProps;
+    } as unknown as OnButtonClickProps;
 
     onGenerateFormClick(params);
 
@@ -79,6 +79,7 @@ describe(".onGenerateFormClick", () => {
     const existingDynamicBindingPropertyPathList = [
       { key: "dummy.path1" },
       { key: "dummy.path2" },
+      { key: "sourceData" },
     ];
 
     const mockBatchUpdateProperties = jest.fn();
@@ -95,12 +96,12 @@ describe(".onGenerateFormClick", () => {
       schemaTestData.initialDataset.dataSource,
     );
 
-    const params = ({
+    const params = {
       batchUpdateProperties: mockBatchUpdateProperties,
       props: {
         widgetProperties,
       },
-    } as unknown) as OnButtonClickProps;
+    } as unknown as OnButtonClickProps;
 
     onGenerateFormClick(params);
 
@@ -123,6 +124,7 @@ describe(".onGenerateFormClick", () => {
     const existingDynamicBindingPropertyPathList = [
       { key: "dummy.path1" },
       { key: "dummy.path2" },
+      { key: "sourceData" },
     ];
 
     const mockBatchUpdateProperties = jest.fn();
@@ -140,12 +142,12 @@ describe(".onGenerateFormClick", () => {
       schemaTestData.withRemovedAddedKeyToInitialDataset.dataSource,
     );
 
-    const params = ({
+    const params = {
       batchUpdateProperties: mockBatchUpdateProperties,
       props: {
         widgetProperties,
       },
-    } as unknown) as OnButtonClickProps;
+    } as unknown as OnButtonClickProps;
 
     onGenerateFormClick(params);
 
@@ -153,7 +155,6 @@ describe(".onGenerateFormClick", () => {
       ...existingDynamicBindingPropertyPathList,
       { key: "schema.__root_schema__.children.dob.defaultValue" },
     ];
-
     expect(mockBatchUpdateProperties.mock.calls.length).toBe(1);
     const response = mockBatchUpdateProperties.mock.calls[0][0];
     expect(response.fieldLimitExceeded).toEqual(false);

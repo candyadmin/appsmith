@@ -1,17 +1,19 @@
 import * as Sentry from "@sentry/react";
 import { set } from "lodash";
-import { ControllerProps, useFormContext } from "react-hook-form";
+import type { ControllerProps } from "react-hook-form";
+import { useFormContext } from "react-hook-form";
 import { useContext, useEffect } from "react";
 import { klona } from "klona";
 
 import FormContext from "../FormContext";
-import { FieldType } from "../constants";
+import type { FieldType } from "../constants";
+import { startAndEndSpanForFn } from "UITelemetry/generateTraces";
 
-export type UseRegisterFieldValidityProps = {
+export interface UseRegisterFieldValidityProps {
   isValid: boolean;
   fieldName: ControllerProps["name"];
   fieldType: FieldType;
-};
+}
 /**
  * This hook is used to register the isValid property of the field
  * the meta property "fieldState".
@@ -33,10 +35,14 @@ function useRegisterFieldValidity({
     setTimeout(() => {
       try {
         isValid
-          ? clearErrors(fieldName)
-          : setError(fieldName, {
-              type: fieldType,
-              message: "Invalid field",
+          ? startAndEndSpanForFn("JSONFormWidget.clearErrors", {}, () => {
+              clearErrors(fieldName);
+            })
+          : startAndEndSpanForFn("JSONFormWidget.setError", {}, () => {
+              setError(fieldName, {
+                type: fieldType,
+                message: "Invalid field",
+              });
             });
       } catch (e) {
         Sentry.captureException(e);

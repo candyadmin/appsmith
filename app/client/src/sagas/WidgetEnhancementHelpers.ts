@@ -1,13 +1,12 @@
-import {
-  MAIN_CONTAINER_WIDGET_ID,
-  WidgetType,
-} from "constants/WidgetConstants";
+import type { AppState } from "ee/reducers";
+import type { WidgetType } from "constants/WidgetConstants";
+import { MAIN_CONTAINER_WIDGET_ID } from "constants/WidgetConstants";
 import { get, set } from "lodash";
 import { useSelector } from "react-redux";
-import { AppState } from "@appsmith/reducers";
-import { CanvasWidgetsReduxState } from "reducers/entityReducers/canvasWidgetsReducer";
+import type { CanvasWidgetsReduxState } from "reducers/entityReducers/canvasWidgetsReducer";
+import { LayoutSystemTypes } from "layoutSystems/types";
 import { select } from "redux-saga/effects";
-import WidgetFactory from "utils/WidgetFactory";
+import WidgetFactory from "WidgetProvider/factory";
 import { getWidgets } from "./selectors";
 
 /*
@@ -32,13 +31,14 @@ export enum WidgetEnhancementType {
   AUTOCOMPLETE = "child.autocomplete",
   HIDE_EVALUATED_VALUE = "child.hideEvaluatedValue",
   UPDATE_DATA_TREE_PATH = "child.updateDataTreePath",
+  SHOULD_HIDE_PROPERTY = "child.shouldHideProperty",
 }
 
 export function getParentWithEnhancementFn(
-  widgetId: string,
+  widgetId: string | undefined,
   widgets: CanvasWidgetsReduxState,
 ) {
-  let widget = get(widgets, widgetId, undefined);
+  let widget = get(widgets, widgetId || "", undefined);
 
   // While this widget has a parent
   while (widget?.parentId) {
@@ -65,6 +65,20 @@ export function getParentWithEnhancementFn(
 
     return;
   }
+}
+
+const fixedLayoutOnlyProperties = ["dynamicHeight"];
+
+export function layoutSystemBasedPropertyFilter(
+  // TODO: Fix this the next time the file is edited
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  parentProps: any,
+  propertyName: string,
+) {
+  return (
+    parentProps.layoutSystemType !== LayoutSystemTypes.FIXED &&
+    fixedLayoutOnlyProperties.includes(propertyName)
+  );
 }
 
 export function getWidgetEnhancementFn(
@@ -163,16 +177,20 @@ export function useChildWidgetEnhancementFn(
 }
 
 // Todo (abhinav): Specify styles here
+// TODO: Fix this the next time the file is edited
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type EnhancementFn = (parentProps: any, ...rest: any) => unknown;
+// TODO: Fix this the next time the file is edited
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type BoundEnhancementFn = (...rest: any) => unknown;
 
-type EnhancementFns = {
+interface EnhancementFns {
   updateDataTreePathFn?: BoundEnhancementFn;
   propertyPaneEnhancementFn?: BoundEnhancementFn;
   autoCompleteEnhancementFn?: BoundEnhancementFn;
   customJSControlEnhancementFn?: BoundEnhancementFn;
   hideEvaluatedValueEnhancementFn?: BoundEnhancementFn;
-};
+}
 
 export function useChildWidgetEnhancementFns(widgetId: string): EnhancementFns {
   const enhancementFns = {

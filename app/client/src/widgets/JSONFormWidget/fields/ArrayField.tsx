@@ -6,10 +6,12 @@ import React, {
   useState,
 } from "react";
 import styled from "styled-components";
-import { ControllerRenderProps, useFormContext } from "react-hook-form";
+import type { ControllerRenderProps } from "react-hook-form";
+import { useFormContext } from "react-hook-form";
 import { get, set } from "lodash";
 import { Icon } from "@blueprintjs/core";
 import { klona } from "klona";
+import log from "loglevel";
 
 import Accordion from "../component/Accordion";
 import FieldLabel, { BASE_LABEL_TEXT_SIZE } from "../component/FieldLabel";
@@ -18,14 +20,14 @@ import FormContext from "../FormContext";
 import NestedFormWrapper from "../component/NestedFormWrapper";
 import useDeepEffect from "utils/hooks/useDeepEffect";
 import useUpdateAccessor from "./useObserveAccessor";
-import {
-  ARRAY_ITEM_KEY,
+import type {
   BaseFieldComponentProps,
   FieldComponent,
   FieldComponentBaseProps,
   FieldState,
   SchemaItem,
 } from "../constants";
+import { ARRAY_ITEM_KEY } from "../constants";
 import { Colors } from "constants/Colors";
 import { FIELD_MARGIN_BOTTOM } from "../component/styleConstants";
 import { generateReactKey } from "utils/generators";
@@ -43,15 +45,17 @@ type ArrayComponentProps = FieldComponentBaseProps & {
   cellBorderRadius?: string;
   cellBoxShadow?: string;
   accentColor?: string;
+  // TODO: Fix this the next time the file is edited
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   defaultValue?: any[];
   isCollapsible: boolean;
 };
 
 type ArrayFieldProps = BaseFieldComponentProps<ArrayComponentProps>;
 
-type StyledButtonProps = {
+interface StyledButtonProps {
   color?: string;
-};
+}
 
 const COMPONENT_DEFAULT_VALUES: ArrayComponentProps = {
   backgroundColor: Colors.GREY_1,
@@ -165,10 +169,23 @@ function ArrayField({
   const removedKeys = useRef<string[]>([]);
   const defaultValue = getDefaultValue(schemaItem, passedDefaultValue);
   const value = watch(name);
-  const valueLength = value?.length || 0;
-  const [cachedDefaultValue, setCachedDefaultValue] = useState<unknown[]>(
-    defaultValue,
-  );
+  /**
+   * parsedArrayValue is a patch that parses a stringified array.
+   * We are doing this because we want to avoid creation of multiple children fields when the ArrayField recieves value as a stringified array.
+   * This scenario happens when evaluations returns the defaultValue as a stringified array earlier in the evaluation cycles.
+   * Please refer to this issue:https://github.com/appsmithorg/appsmith/issues/23825 for more information.
+   */
+  let parsedArrayValue = value;
+  try {
+    if (typeof value === "string") {
+      parsedArrayValue = JSON.parse(value);
+    }
+  } catch (e) {
+    log.debug("Unable to parse value", e);
+  }
+  const valueLength = parsedArrayValue?.length || 0;
+  const [cachedDefaultValue, setCachedDefaultValue] =
+    useState<unknown[]>(defaultValue);
 
   useUpdateAccessor({ accessor: schemaItem.accessor });
 
@@ -213,6 +230,8 @@ function ArrayField({
       // Manually remove from the values and re-insert to maintain the position of the
       // values
       const newValues = klona(
+        // TODO: Fix this the next time the file is edited
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         values.filter((_val: any, index: number) => index !== removedIndex),
       );
 
@@ -242,9 +261,7 @@ function ArrayField({
     } else if (keysRef.current.length < valueLength) {
       const diff = valueLength - keysRef.current.length;
 
-      const newKeys = Array(diff)
-        .fill(0)
-        .map(generateReactKey);
+      const newKeys = Array(diff).fill(0).map(generateReactKey);
 
       keysRef.current = [...keysRef.current, ...newKeys];
     }
@@ -274,10 +291,8 @@ function ArrayField({
 
       if (Array.isArray(currMetaInternalFieldState)) {
         if (currMetaInternalFieldState.length > itemKeys.length) {
-          const updatedMetaInternalFieldState = currMetaInternalFieldState.slice(
-            0,
-            itemKeys.length,
-          );
+          const updatedMetaInternalFieldState =
+            currMetaInternalFieldState.slice(0, itemKeys.length);
 
           set(metaInternalFieldState, name, updatedMetaInternalFieldState);
         }

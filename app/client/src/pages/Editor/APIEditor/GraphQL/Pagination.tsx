@@ -1,25 +1,18 @@
 import React, { useEffect, useState } from "react";
-import styled from "constants/DefaultTheme";
+import styled from "styled-components";
 import { change, formValueSelector } from "redux-form";
 import FormRow from "components/editorComponents/FormRow";
 import { PaginationType } from "entities/Action";
 import RadioFieldGroup from "components/editorComponents/form/fields/RadioGroupField";
-import {
-  Text,
-  TextType,
-  TooltipComponent as Tooltip,
-  Dropdown,
-  Checkbox,
-  DropdownOption,
-} from "design-system";
-import { EditorTheme } from "components/editorComponents/CodeEditor/EditorConfig";
-import { AnyAction, bindActionCreators, Dispatch } from "redux";
+import type { DropdownOption } from "@appsmith/ads-old";
+import type { EditorTheme } from "components/editorComponents/CodeEditor/EditorConfig";
+import type { AnyAction, Dispatch } from "redux";
+import { bindActionCreators } from "redux";
 import { connect } from "react-redux";
-import { AppState } from "@appsmith/reducers";
+import type { AppState } from "ee/reducers";
 import { FormLabel } from "components/editorComponents/form/fields/StyledFormComponents";
 import DynamicTextField from "components/editorComponents/form/fields/DynamicTextField";
-import { Colors } from "constants/Colors";
-import { GRAPHQL_PAGINATION_TYPE } from "constants/ApiEditorConstants/GraphQLEditorConstants";
+import type { GRAPHQL_PAGINATION_TYPE } from "constants/ApiEditorConstants/GraphQLEditorConstants";
 import {
   LIMITBASED_PREFIX,
   CURSORBASED_PREFIX,
@@ -28,6 +21,7 @@ import {
 } from "utils/editor/EditorBindingPaths";
 import { log } from "loglevel";
 import { PaginationSubComponent } from "components/formControls/utils";
+import { Select, Option, Checkbox, Text, Tooltip, Link } from "@appsmith/ads";
 
 const PAGINATION_PREFIX =
   "actionConfiguration.pluginSpecifiedTemplates[2].value";
@@ -38,30 +32,40 @@ interface PaginationProps {
   theme?: EditorTheme;
   query: string;
   formName: string;
+  // TODO: Fix this the next time the file is edited
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   change: (formName: string, id: string, value: any) => void;
+  // TODO: Fix this the next time the file is edited
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   cursorBased?: any;
+  // TODO: Fix this the next time the file is edited
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   limitBased?: any;
 }
 
 const SubHeading = styled(Text)`
   display: block;
   margin-bottom: ${(props) => props.theme.spaces[4]}px;
-  color: ${(props) => props.theme.colors.apiPane.pagination.stepTitle};
+  // color: ${(props) => props.theme.colors.apiPane.pagination.stepTitle};
 `;
 
 const PaginationTypeView = styled.div`
-  margin: -16px 0 24px 28px;
+  margin-left: 22px;
   width: 100%;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+
+  // TODO: remove this in the favor of changing the kind of text during ads typography update phase
+  .help-text {
+    color: #6a7585;
+  }
 `;
 
 const PaginationContainer = styled.div`
   display: flex;
   width: 100%;
-  padding: ${(props) => props.theme.spaces[8]}px
-    ${(props) => props.theme.spaces[12]}px;
+  padding: var(--ads-v2-spaces-4) 0;
 `;
 
 const PaginationSection = styled.div`
@@ -95,8 +99,7 @@ const Step = styled.div`
     min-width: unset;
   }
 
-  & label .bp3-popover-target .label-icon-wrapper {
-    border-bottom: 1px dashed ${Colors.LIGHT_GREYISH_BLUE};
+  & label .label-icon-wrapper {
     cursor: help;
   }
 `;
@@ -121,7 +124,18 @@ const DynamicTextFieldWrapper = styled(DynamicTextField)`
   }
 `;
 
+const ErrorMsg = styled.span`
+  font-weight: normal;
+  font-size: 12px;
+  line-height: 16px;
+  letter-spacing: -0.221538px;
+  color: var(--ads-v2-color-fg-error);
+  margin-top: var(--ads-spaces-3);
+`;
+
 const graphqlParseVariables = (queryBody: string) => {
+  // TODO: Fix this the next time the file is edited
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const variables: any = {};
   try {
     const variableString = queryBody.match(/\((\$[^)]*?)\)/);
@@ -145,12 +159,18 @@ const graphqlParseVariables = (queryBody: string) => {
   return variables;
 };
 
-type PaginationTypeBasedWrapperProps = {
+interface PaginationTypeBasedWrapperProps {
   actionName: string;
   className: string;
   dataReplayId: string;
+  // TODO: Fix this the next time the file is edited
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onInputChange?: (value: any) => void;
+  // TODO: Fix this the next time the file is edited
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onSelectVariable: (_: any, dropdownOption: any) => void;
+  // TODO: Fix this the next time the file is edited
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onSeparateKeyChange?: (value: any) => void;
   selectedVariable: {
     label?: string;
@@ -164,11 +184,13 @@ type PaginationTypeBasedWrapperProps = {
   valuePath: string;
   valuePlaceholder?: string;
   valueLabel: string;
+  // TODO: Fix this the next time the file is edited
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   variableOptions: Array<any>;
   variableLabel: string;
   variableTooltip?: string;
   valueTooltip?: string;
-};
+}
 
 function PaginationTypeBasedWrapper({
   actionName,
@@ -211,11 +233,11 @@ function PaginationTypeBasedWrapper({
     .join(".")}`;
   return (
     <PaginationFieldContainer>
-      <PaginationFieldWrapper data-replay-id={dataReplayId}>
+      <PaginationFieldWrapper data-location-id={dataReplayId}>
         <Step>
           <FormLabel>
             {variableTooltip ? (
-              <Tooltip content={variableTooltip} hoverOpenDelay={500}>
+              <Tooltip content={variableTooltip}>
                 <span className="label-icon-wrapper">{variableLabel}</span>
               </Tooltip>
             ) : (
@@ -223,42 +245,59 @@ function PaginationTypeBasedWrapper({
             )}
           </FormLabel>
         </Step>
-        <Dropdown
-          boundary="viewport"
+        <Select
           className={`${className}Variable`}
-          dropdownMaxHeight={"200px"}
-          errorMsg={
-            !selectedVariable.value ||
-            dropdownOptions.some(
-              (option: DropdownOption) =>
-                option.value === selectedVariable.value,
+          onChange={(value) =>
+            onSelectVariable(
+              value,
+              dropdownOptions?.find((option) => option?.value === value),
             )
-              ? undefined
-              : "No such variable exist in query"
           }
-          fillOptions
-          onSelect={onSelectVariable}
-          options={dropdownOptions}
           placeholder={
             dropdownOptions.length > 0
               ? "Select a variable"
               : "Add variables in query to select here"
           }
-          selected={
+          value={
             (selectedVariable.label && selectedVariable.value
               ? selectedVariable
-              : undefined) as any
+              : // TODO: Fix this the next time the file is edited
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                undefined) as any
           }
-          showEmptyOptions
-          showLabelOnly
-          width={"100%"}
-        />
+        >
+          {dropdownOptions.map((option) => {
+            return (
+              <Option
+                isDisabled={option?.disabled}
+                key={option?.label}
+                value={option?.label}
+              >
+                {option?.label}
+              </Option>
+            );
+          })}
+        </Select>
+        {!selectedVariable.value ||
+          (dropdownOptions.some(
+            (option: DropdownOption) => option.value === selectedVariable.value,
+          ) && (
+            <ErrorMsg>
+              {!selectedVariable.value ||
+              dropdownOptions.some(
+                (option: DropdownOption) =>
+                  option.value === selectedVariable.value,
+              )
+                ? undefined
+                : "No such variable exist in query"}
+            </ErrorMsg>
+          ))}
       </PaginationFieldWrapper>
-      <PaginationFieldWrapper data-replay-id={dataReplayId}>
+      <PaginationFieldWrapper data-location-id={dataReplayId}>
         <Step>
           <FormLabel>
             {valueTooltip ? (
-              <Tooltip content={valueTooltip} hoverOpenDelay={500}>
+              <Tooltip content={valueTooltip}>
                 <span className="label-icon-wrapper">{valueLabel}</span>
               </Tooltip>
             ) : (
@@ -270,6 +309,7 @@ function PaginationTypeBasedWrapper({
           className={`${className}Value`}
           dataTreePath={dataTreePath}
           disabled={separateKeyFlag && !separateValueFlag}
+          evaluatedPopUpLabel={valueLabel}
           name={valuePath}
           onChange={onInputChange}
           placeholder={valuePlaceholder || ""}
@@ -281,12 +321,12 @@ function PaginationTypeBasedWrapper({
           onSeparateKeyChange && (
             <CheckboxFieldWrapper>
               <Checkbox
-                fill
-                isDefaultChecked={separateValueFlag}
-                label={separateKeyLabel}
+                defaultChecked={separateValueFlag}
                 name={separateKeyPath}
-                onCheckChange={onSeparateKeyChange}
-              />
+                onChange={onSeparateKeyChange}
+              >
+                {separateKeyLabel}
+              </Checkbox>
             </CheckboxFieldWrapper>
           )}
       </PaginationFieldWrapper>
@@ -295,6 +335,8 @@ function PaginationTypeBasedWrapper({
 }
 
 function Pagination(props: PaginationProps) {
+  // TODO: Fix this the next time the file is edited
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [variablesList, setVariablesList] = useState<any>(
     graphqlParseVariables(props.query),
   );
@@ -303,11 +345,15 @@ function Pagination(props: PaginationProps) {
     setVariablesList(graphqlParseVariables(props.query));
   }, [props.query]);
 
+  // TODO: Fix this the next time the file is edited
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const variableOptions = Object.keys(variablesList).map((variable: any) => ({
     label: variable,
     value: variable,
   }));
 
+  // TODO: Fix this the next time the file is edited
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const setPaginationValue = (keyPath: string, key: string, value: any) => {
     props.change(
       props.formName,
@@ -325,6 +371,8 @@ function Pagination(props: PaginationProps) {
     actualKeyPath: string;
     dependentKeyPath: string;
     isSeparateEnabled: boolean;
+    // TODO: Fix this the next time the file is edited
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     value: any;
   }) => {
     if (!isSeparateEnabled) {
@@ -357,11 +405,11 @@ function Pagination(props: PaginationProps) {
               value: PaginationType.NONE,
             },
             {
-              label: "Paginate via Limit and Offset",
+              label: "Paginate using limit and offset",
               value: PaginationType.PAGE_NO,
             },
             {
-              label: "Paginate via Cursor based",
+              label: "Paginate using cursor",
               value: PaginationType.CURSOR,
             },
           ]}
@@ -370,7 +418,7 @@ function Pagination(props: PaginationProps) {
           selectedOptionElements={[
             null,
             <PaginationTypeView key={`${PaginationType.PAGE_NO}-element`}>
-              <Text type={TextType.P1}>
+              <Text kind="body-m" renderAs={"p"}>
                 Specify a specific limit (number of results) and offset (the
                 number of records that needed to be skipped).
               </Text>
@@ -380,8 +428,10 @@ function Pagination(props: PaginationProps) {
                   actionName={props.actionName}
                   className="t--apiFormPaginationLimit"
                   dataReplayId={btoa(
-                    `${PAGINATION_PREFIX}.${LIMITBASED_PREFIX}.${PaginationSubComponent.Limit}`,
+                    `${PAGINATION_PREFIX}.${LIMITBASED_PREFIX}.${PaginationSubComponent.Limit}.value`,
                   )}
+                  // TODO: Fix this the next time the file is edited
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   onInputChange={(value: any) => {
                     setPaginationValue(
                       `${LIMITBASED_PREFIX}.${PaginationSubComponent.Limit}`,
@@ -389,6 +439,8 @@ function Pagination(props: PaginationProps) {
                       value,
                     );
                   }}
+                  // TODO: Fix this the next time the file is edited
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   onSelectVariable={(_: any, dropdownOption: any) => {
                     const values = variablesList[dropdownOption.value];
                     Object.keys(values).forEach((key: string) => {
@@ -403,11 +455,11 @@ function Pagination(props: PaginationProps) {
                     label: props.limitBased?.limit?.name,
                     value: props.limitBased?.limit?.name,
                   }}
-                  valueLabel="Limit Value"
+                  valueLabel="Limit value"
                   valuePath={`${PAGINATION_PREFIX}.${LIMITBASED_PREFIX}.${PaginationSubComponent.Limit}.value`}
                   valuePlaceholder="{{Table1.pageSize}}"
                   valueTooltip="Override the value of the limit variable selected i.e. the no of rows returned"
-                  variableLabel="Limit Variable"
+                  variableLabel="Limit variable"
                   variableOptions={variableOptions}
                   variableTooltip="Select the limit variable from the query"
                 />
@@ -416,8 +468,10 @@ function Pagination(props: PaginationProps) {
                   actionName={props.actionName}
                   className="t--apiFormPaginationOffset"
                   dataReplayId={btoa(
-                    `${PAGINATION_PREFIX}.${LIMITBASED_PREFIX}.${PaginationSubComponent.Offset}`,
+                    `${PAGINATION_PREFIX}.${LIMITBASED_PREFIX}.${PaginationSubComponent.Offset}.value`,
                   )}
+                  // TODO: Fix this the next time the file is edited
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   onInputChange={(value: any) => {
                     setPaginationValue(
                       `${LIMITBASED_PREFIX}.${PaginationSubComponent.Offset}`,
@@ -425,6 +479,8 @@ function Pagination(props: PaginationProps) {
                       value,
                     );
                   }}
+                  // TODO: Fix this the next time the file is edited
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   onSelectVariable={(_: any, dropdownOption: any) => {
                     const values = variablesList[dropdownOption.value];
                     Object.keys(values).forEach((key: string) => {
@@ -439,41 +495,43 @@ function Pagination(props: PaginationProps) {
                     label: props.limitBased?.offset?.name,
                     value: props.limitBased?.offset?.name,
                   }}
-                  valueLabel="Offset Value"
+                  valueLabel="Offset value"
                   valuePath={`${PAGINATION_PREFIX}.${LIMITBASED_PREFIX}.${PaginationSubComponent.Offset}.value`}
                   valuePlaceholder="{{Table1.pageNo * Table1.pageSize}}"
                   valueTooltip="Override the value of the offset variable selected ie the no of rows omitted from the beginning"
-                  variableLabel="Offset Variable"
+                  variableLabel="Offset variable"
                   variableOptions={variableOptions}
                   variableTooltip="Select the offset variable from the query"
                 />
               </PaginationSection>
             </PaginationTypeView>,
             <PaginationTypeView key={`${PaginationType.CURSOR}-element`}>
-              <Text type={TextType.P1}>
-                Specfiy the previous and next cursor variables along with a
+              <Text className="help-text" kind="body-m" renderAs={"p"}>
+                Specify the previous and next cursor variables along with a
                 limit value.{" "}
-                <a
-                  href="https://graphql.org/learn/pagination/"
-                  rel="noreferrer"
-                  style={{ textDecoration: "underline" }}
+                <Link
+                  kind="primary"
+                  style={{ display: "inline" }}
                   target={"_blank"}
+                  to="https://graphql.org/learn/pagination/"
                 >
                   Refer documentation
-                </a>{" "}
+                </Link>{" "}
                 for more information
               </Text>
               <PaginationSection>
-                <SubHeading type={TextType.P1}>
-                  Configure Previous Page
+                <SubHeading kind="body-m" renderAs={"p"}>
+                  Configure previous page
                 </SubHeading>
-                {/* Previous Limit Value */}
+                {/* Previous Limit value */}
                 <PaginationTypeBasedWrapper
                   actionName={props.actionName}
                   className="t--apiFormPaginationPrevLimit"
                   dataReplayId={btoa(
-                    `${PAGINATION_PREFIX}.${CURSORBASED_PREFIX}.${CURSOR_PREVIOUS_PREFIX}`,
+                    `${PAGINATION_PREFIX}.${CURSORBASED_PREFIX}.${CURSOR_PREVIOUS_PREFIX}.${PaginationSubComponent.Limit}.value`,
                   )}
+                  // TODO: Fix this the next time the file is edited
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   onInputChange={(value: any) => {
                     setSeparateOrSameLimitValue({
                       actualKeyPath: `${CURSORBASED_PREFIX}.${CURSOR_PREVIOUS_PREFIX}.${PaginationSubComponent.Limit}.value`,
@@ -482,6 +540,8 @@ function Pagination(props: PaginationProps) {
                       isSeparateEnabled: !!paginationNext?.limit?.isSeparate,
                     });
                   }}
+                  // TODO: Fix this the next time the file is edited
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   onSelectVariable={(_: any, dropdownOption: any) => {
                     const values = variablesList[dropdownOption.value];
                     Object.keys(values).forEach((key: string) => {
@@ -496,11 +556,11 @@ function Pagination(props: PaginationProps) {
                     label: paginationPrev?.limit?.name,
                     value: paginationPrev?.limit?.name,
                   }}
-                  valueLabel="Limit Variable Value"
+                  valueLabel="Limit variable value"
                   valuePath={`${PAGINATION_PREFIX}.${CURSORBASED_PREFIX}.${CURSOR_PREVIOUS_PREFIX}.${PaginationSubComponent.Limit}.value`}
                   valuePlaceholder="{{Table1.pageSize}}"
                   valueTooltip="Override the value for the previous no of rows to be fetched"
-                  variableLabel="Limit Variable Name"
+                  variableLabel="Limit variable name"
                   variableOptions={variableOptions}
                   variableTooltip="Select the variable from the query that holds the last/previous limit value"
                 />
@@ -509,8 +569,10 @@ function Pagination(props: PaginationProps) {
                   actionName={props.actionName}
                   className="t--apiFormPaginationPrevCursor"
                   dataReplayId={btoa(
-                    `${PAGINATION_PREFIX}.${CURSORBASED_PREFIX}.${CURSOR_PREVIOUS_PREFIX}.${PaginationSubComponent.Cursor}`,
+                    `${PAGINATION_PREFIX}.${CURSORBASED_PREFIX}.${CURSOR_PREVIOUS_PREFIX}.${PaginationSubComponent.Cursor}.value`,
                   )}
+                  // TODO: Fix this the next time the file is edited
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   onInputChange={(value: any) => {
                     setPaginationValue(
                       `${CURSORBASED_PREFIX}.${CURSOR_PREVIOUS_PREFIX}.${PaginationSubComponent.Cursor}`,
@@ -518,6 +580,8 @@ function Pagination(props: PaginationProps) {
                       value,
                     );
                   }}
+                  // TODO: Fix this the next time the file is edited
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   onSelectVariable={(_: any, dropdownOption: any) => {
                     const values = variablesList[dropdownOption.value];
                     Object.keys(values).forEach((key: string) => {
@@ -532,24 +596,28 @@ function Pagination(props: PaginationProps) {
                     label: paginationPrev?.cursor?.name,
                     value: paginationPrev?.cursor?.name,
                   }}
-                  valueLabel="Start Cursor Value"
+                  valueLabel="Start cursor value"
                   valuePath={`${PAGINATION_PREFIX}.${CURSORBASED_PREFIX}.${CURSOR_PREVIOUS_PREFIX}.${PaginationSubComponent.Cursor}.value`}
                   valuePlaceholder="{{Api1.data.previousCursor}}"
                   valueTooltip="Binding the widget action to the previous page activity"
-                  variableLabel="Start Cursor Variable"
+                  variableLabel="Start cursor variable"
                   variableOptions={variableOptions}
                   variableTooltip="Select the variable which holds the before cursor"
                 />
               </PaginationSection>
               <PaginationSection>
-                <SubHeading type={TextType.P1}>Configure Next Page</SubHeading>
-                {/* Next Limit Value */}
+                <SubHeading kind="body-m" renderAs={"p"}>
+                  Configure next page
+                </SubHeading>
+                {/* Next Limit value */}
                 <PaginationTypeBasedWrapper
                   actionName={props.actionName}
                   className="t--apiFormPaginationNextLimit"
                   dataReplayId={btoa(
-                    `${PAGINATION_PREFIX}.${CURSOR_NEXT_PREFIX}.${PaginationSubComponent.Limit}`,
+                    `${PAGINATION_PREFIX}.${CURSORBASED_PREFIX}.${CURSOR_NEXT_PREFIX}.${PaginationSubComponent.Limit}.value`,
                   )}
+                  // TODO: Fix this the next time the file is edited
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   onInputChange={(value: any) => {
                     setPaginationValue(
                       `${CURSORBASED_PREFIX}.${CURSOR_NEXT_PREFIX}.${PaginationSubComponent.Limit}`,
@@ -557,6 +625,8 @@ function Pagination(props: PaginationProps) {
                       value,
                     );
                   }}
+                  // TODO: Fix this the next time the file is edited
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   onSelectVariable={(_: any, dropdownOption: any) => {
                     const values = variablesList[dropdownOption.value];
                     Object.keys(values).forEach((key: string) => {
@@ -567,6 +637,8 @@ function Pagination(props: PaginationProps) {
                       );
                     });
                   }}
+                  // TODO: Fix this the next time the file is edited
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   onSeparateKeyChange={(value: any) => {
                     setPaginationValue(
                       `${CURSORBASED_PREFIX}.${CURSOR_NEXT_PREFIX}.${PaginationSubComponent.Limit}`,
@@ -582,11 +654,11 @@ function Pagination(props: PaginationProps) {
                   separateKeyLabel="Enable separate value for first limit variable"
                   separateKeyPath={`${PAGINATION_PREFIX}.${CURSORBASED_PREFIX}.${CURSOR_NEXT_PREFIX}.${PaginationSubComponent.Limit}.isSeparate`}
                   separateValueFlag={!!paginationNext?.limit?.isSeparate}
-                  valueLabel="Limit Variable Value"
+                  valueLabel="Limit variable value"
                   valuePath={`${PAGINATION_PREFIX}.${CURSORBASED_PREFIX}.${CURSOR_NEXT_PREFIX}.${PaginationSubComponent.Limit}.value`}
                   valuePlaceholder="{{Table1.pageSize}}"
                   valueTooltip="Override the value for the next no of rows to be fetched"
-                  variableLabel="Limit Variable Name"
+                  variableLabel="Limit variable name"
                   variableOptions={variableOptions}
                   variableTooltip="Select the variable from the query that holds the first/next limit value"
                 />
@@ -595,8 +667,10 @@ function Pagination(props: PaginationProps) {
                   actionName={props.actionName}
                   className="t--apiFormPaginationNextCursor"
                   dataReplayId={btoa(
-                    `${PAGINATION_PREFIX}.${CURSOR_NEXT_PREFIX}.${PaginationSubComponent.Cursor}`,
+                    `${PAGINATION_PREFIX}.${CURSORBASED_PREFIX}.${CURSOR_NEXT_PREFIX}.${PaginationSubComponent.Cursor}.value`,
                   )}
+                  // TODO: Fix this the next time the file is edited
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   onInputChange={(value: any) => {
                     setPaginationValue(
                       `${CURSORBASED_PREFIX}.${CURSOR_NEXT_PREFIX}.${PaginationSubComponent.Cursor}`,
@@ -604,6 +678,8 @@ function Pagination(props: PaginationProps) {
                       value,
                     );
                   }}
+                  // TODO: Fix this the next time the file is edited
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   onSelectVariable={(_: any, dropdownOption: any) => {
                     const values = variablesList[dropdownOption.value];
                     Object.keys(values).forEach((key: string) => {
@@ -618,11 +694,11 @@ function Pagination(props: PaginationProps) {
                     label: paginationNext?.cursor?.name,
                     value: paginationNext?.cursor?.name,
                   }}
-                  valueLabel="End Cursor Value"
+                  valueLabel="End cursor value"
                   valuePath={`${PAGINATION_PREFIX}.${CURSORBASED_PREFIX}.${CURSOR_NEXT_PREFIX}.${PaginationSubComponent.Cursor}.value`}
                   valuePlaceholder="{{Api1.data.nextCursor}}"
                   valueTooltip="Binding the widget action to the next page activity"
-                  variableLabel="End Cursor Variable"
+                  variableLabel="End cursor variable"
                   variableOptions={variableOptions}
                   variableTooltip="Select the variable which holds the after cursor"
                 />

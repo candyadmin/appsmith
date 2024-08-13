@@ -1,20 +1,16 @@
 import { get } from "lodash";
+import type { ReduxAction } from "ee/constants/ReduxActionConstants";
 import {
   ReduxActionTypes,
   ReduxActionErrorTypes,
-  ReduxAction,
-} from "@appsmith/constants/ReduxActionConstants";
+} from "ee/constants/ReduxActionConstants";
 import log from "loglevel";
 import history from "utils/history";
-import { ApiResponse } from "api/ApiResponses";
-import { Toaster, Variant } from "design-system";
-import { flushErrors } from "actions/errorActions";
+import type { ApiResponse } from "api/ApiResponses";
+import { flushErrors, safeCrashApp } from "actions/errorActions";
 import { AUTH_LOGIN_URL } from "constants/routes";
-import { User } from "constants/userConstants";
-import {
-  ERROR_CODES,
-  SERVER_ERROR_CODES,
-} from "@appsmith/constants/ApiConstants";
+import type { User } from "constants/userConstants";
+import { ERROR_CODES, SERVER_ERROR_CODES } from "ee/constants/ApiConstants";
 import { getSafeCrash } from "selectors/errorSelectors";
 import { getCurrentUser } from "selectors/usersSelectors";
 import { ANONYMOUS_USERNAME } from "constants/userConstants";
@@ -26,11 +22,14 @@ import {
   ERROR_0,
   DEFAULT_ERROR_MESSAGE,
   createMessage,
-} from "@appsmith/constants/messages";
+} from "ee/constants/messages";
 import store from "store";
 
 import * as Sentry from "@sentry/react";
-import { axiosConnectionAbortedCode } from "api/ApiUtils";
+import { axiosConnectionAbortedCode } from "ee/api/ApiUtils";
+import { getLoginUrl } from "ee/utils/adminSettingsHelpers";
+import type { PluginErrorDetails } from "api/ActionAPI";
+import showToast from "sagas/ToastSagas";
 
 /**
  * making with error message with action name
@@ -40,6 +39,8 @@ import { axiosConnectionAbortedCode } from "api/ApiUtils";
 export const getDefaultActionError = (action: string) =>
   `Incurred an error when ${action}`;
 
+// TODO: Fix this the next time the file is edited
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function* callAPI(apiCall: any, requestPayload: any) {
   try {
     const response: ApiResponse = yield call(apiCall, requestPayload);
@@ -50,9 +51,10 @@ export function* callAPI(apiCall: any, requestPayload: any) {
 }
 
 /**
- * transforn server errors to client error codes
+ * transform server errors to client error codes
  *
  * @param code
+ * @param resourceType
  */
 const getErrorMessage = (code: number, resourceType = "") => {
   switch (code) {
@@ -76,8 +78,11 @@ export class IncorrectBindingError extends Error {}
  * @throws {Error}
  * @param response
  * @param show
+ * @param logToSentry
  */
 export function* validateResponse(
+  // TODO: Fix this the next time the file is edited
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   response: ApiResponse | any,
   show = true,
   logToSentry = false,
@@ -94,15 +99,19 @@ export function* validateResponse(
   if (!response.responseMeta && !response.status) {
     throw Error(getErrorMessage(0));
   }
+
   if (!response.responseMeta && response.status) {
     throw Error(getErrorMessage(response.status, response.resourceType));
   }
+
   if (response.responseMeta.success) {
     return true;
   }
+
   if (
-    response.responseMeta.error.code ===
-    SERVER_ERROR_CODES.INCORRECT_BINDING_LIST_OF_WIDGET
+    SERVER_ERROR_CODES.INCORRECT_BINDING_LIST_OF_WIDGET.includes(
+      response.responseMeta.error.code,
+    )
   ) {
     throw new IncorrectBindingError(response.responseMeta.error.message);
   }
@@ -110,7 +119,7 @@ export function* validateResponse(
   yield put({
     type: ReduxActionErrorTypes.API_ERROR,
     payload: {
-      error: response.responseMeta.error,
+      error: new Error(response.responseMeta.error.message),
       logToSentry,
       show,
     },
@@ -124,11 +133,35 @@ export function getResponseErrorMessage(response: ApiResponse) {
     : undefined;
 }
 
-type ErrorPayloadType = {
+interface ClientDefinedErrorMetadata {
+  clientDefinedError: boolean;
+  statusCode: string;
+  message: string;
+  pluginErrorDetails: PluginErrorDetails;
+}
+
+export function extractClientDefinedErrorMetadata(
+  // TODO: Fix this the next time the file is edited
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  err: any,
+): ClientDefinedErrorMetadata | undefined {
+  if (err?.clientDefinedError && err?.response) {
+    return {
+      clientDefinedError: err?.clientDefinedError,
+      statusCode: err?.statusCode,
+      message: err?.message,
+      pluginErrorDetails: err?.pluginErrorDetails,
+    };
+  } else {
+    return undefined;
+  }
+}
+
+export interface ErrorPayloadType {
   code?: number | string;
   message?: string;
   crash?: boolean;
-};
+}
 const ActionErrorDisplayMap: {
   [key: string]: (error: ErrorPayloadType) => string;
 } = {
@@ -179,6 +212,7 @@ export function* errorSaga(errorAction: ReduxAction<ErrorActionPayload>) {
   }
 
   if (error && error.crash) {
+    effects.push(ErrorEffectTypes.LOG_TO_SENTRY);
     effects.push(ErrorEffectTypes.SAFE_CRASH);
   }
 
@@ -193,11 +227,25 @@ export function* errorSaga(errorAction: ReduxAction<ErrorActionPayload>) {
         break;
       }
       case ErrorEffectTypes.SHOW_ALERT: {
-        showAlertAboutError(message);
+        // This is the toast that is rendered when any page load API fails.
+        yield call(showToast, message, { kind: "error" });
+
+        // TODO: Fix this the next time the file is edited
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        if ((window as any).Cypress) {
+          if (message === "" || message === null) {
+            yield put(
+              safeCrashApp({
+                ...error,
+                code: ERROR_CODES.CYPRESS_DEBUG,
+              }),
+            );
+          }
+        }
         break;
       }
       case ErrorEffectTypes.SAFE_CRASH: {
-        yield call(crashAppSaga, error);
+        yield put(safeCrashApp(error));
         break;
       }
       case ErrorEffectTypes.LOG_TO_SENTRY: {
@@ -212,30 +260,38 @@ export function* errorSaga(errorAction: ReduxAction<ErrorActionPayload>) {
     payload: {
       source: errorAction.type,
       message,
+      // TODO: Fix this the next time the file is edited
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      stackTrace: (error as any)?.stack,
     },
   });
 }
 
 function logErrorSaga(action: ReduxAction<{ error: ErrorPayloadType }>) {
   log.debug(`Error in action ${action.type}`);
-  if (action.payload) log.error(action.payload.error);
+  if (action.payload) log.error(action.payload.error, action);
 }
 
-function showAlertAboutError(message: string) {
-  Toaster.show({ text: message, variant: Variant.danger });
+export function embedRedirectURL() {
+  const queryParams = new URLSearchParams(window.location.search);
+  const ssoTriggerQueryParam = queryParams.get("ssoTrigger");
+  const ssoLoginUrl = ssoTriggerQueryParam
+    ? getLoginUrl(ssoTriggerQueryParam || "")
+    : null;
+  if (ssoLoginUrl) {
+    window.location.href = `${ssoLoginUrl}?redirectUrl=${encodeURIComponent(
+      window.location.href,
+    )}`;
+  } else {
+    window.location.href = `${AUTH_LOGIN_URL}?redirectUrl=${encodeURIComponent(
+      window.location.href,
+    )}`;
+  }
 }
-
-function* crashAppSaga(error: ErrorPayloadType) {
-  yield put({
-    type: ReduxActionTypes.SAFE_CRASH_APPSMITH,
-    payload: error,
-  });
-}
-
 /**
  * this saga do some logic before actually setting safeCrash to true
  */
-function* safeCrashSagaRequest(action: ReduxAction<{ code?: string }>) {
+function* safeCrashSagaRequest(action: ReduxAction<{ code?: ERROR_CODES }>) {
   const user: User | undefined = yield select(getCurrentUser);
   const code = get(action, "payload.code");
 
@@ -245,20 +301,12 @@ function* safeCrashSagaRequest(action: ReduxAction<{ code?: string }>) {
     get(user, "email") === ANONYMOUS_USERNAME &&
     code === ERROR_CODES.PAGE_NOT_FOUND
   ) {
-    window.location.href = `${AUTH_LOGIN_URL}?redirectUrl=${encodeURIComponent(
-      window.location.href,
-    )}`;
-
+    embedRedirectURL();
     return false;
   }
 
   // if there is no action to be done, just calling the safe crash action
-  yield put({
-    type: ReduxActionTypes.SAFE_CRASH_APPSMITH,
-    payload: {
-      code,
-    },
-  });
+  yield put(safeCrashApp({ code }));
 }
 
 /**

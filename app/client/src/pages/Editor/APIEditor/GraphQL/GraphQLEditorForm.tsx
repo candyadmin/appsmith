@@ -1,33 +1,29 @@
-import React, { useCallback, useRef } from "react";
+import React, { useCallback, useContext, useRef } from "react";
 import { connect } from "react-redux";
-import {
-  change,
-  formValueSelector,
-  InjectedFormProps,
-  reduxForm,
-} from "redux-form";
+import type { InjectedFormProps } from "redux-form";
+import { change, formValueSelector, reduxForm } from "redux-form";
 import classNames from "classnames";
 import styled from "styled-components";
-import { API_EDITOR_FORM_NAME } from "@appsmith/constants/forms";
-import { Action } from "entities/Action";
-import { EMPTY_RESPONSE } from "components/editorComponents/ApiResponseView";
-import { AppState } from "@appsmith/reducers";
-import { getApiName } from "selectors/formSelectors";
+import { API_EDITOR_FORM_NAME } from "ee/constants/forms";
+import type { Action } from "entities/Action";
+import type { AppState } from "ee/reducers";
 import { EditorTheme } from "components/editorComponents/CodeEditor/EditorConfig";
 import useHorizontalResize from "utils/hooks/useHorizontalResize";
 import get from "lodash/get";
-import { Datasource } from "entities/Datasource";
+import type { Datasource } from "entities/Datasource";
 import {
-  getAction,
+  getActionByBaseId,
   getActionData,
-} from "../../../../selectors/entitiesSelector";
+} from "ee/selectors/entitiesSelector";
 import { isEmpty } from "lodash";
-import CommonEditorForm, { CommonFormProps } from "../CommonEditorForm";
+import type { CommonFormProps } from "../CommonEditorForm";
+import CommonEditorForm from "../CommonEditorForm";
 import QueryEditor from "./QueryEditor";
 import { tailwindLayers } from "constants/Layers";
 import VariableEditor from "./VariableEditor";
 import Pagination from "./Pagination";
-import { Colors } from "constants/Colors";
+import { ApiEditorContext } from "../ApiEditorContext";
+import { actionResponseDisplayDataFormats } from "pages/Editor/utils";
 
 const ResizeableDiv = styled.div`
   display: flex;
@@ -41,8 +37,8 @@ const BodyWrapper = styled.div`
   overflow: hidden;
   &&&& .CodeMirror {
     height: 100%;
-    border-top: 1px solid var(--appsmith-color-black-250);
-    border-bottom: 1px solid var(--appsmith-color-black-250);
+    border-top: 1px solid var(--ads-v2-color-border);
+    border-bottom: 1px solid var(--ads-v2-color-border);
     border-radius: 0;
     padding: 0;
   }
@@ -57,10 +53,11 @@ const ResizerHandler = styled.div<{ resizing: boolean }>`
   width: 6px;
   height: 100%;
   margin-left: 2px;
-  border-right: 1px solid ${Colors.GREY_200};
-  background: ${(props) => (props.resizing ? Colors.GREY_4 : "transparent")};
+  border-right: 1px solid var(--ads-v2-color-border);
+  background: ${(props) =>
+    props.resizing ? "var(--ads-v2-color-border)" : "transparent"};
   &:hover {
-    background: ${Colors.GREY_4};
+    background: var(--ads-v2-color-border);
     border-color: transparent;
   }
 `;
@@ -87,6 +84,8 @@ function GraphQLEditorForm(props: Props) {
     DEFAULT_GRAPHQL_VARIABLE_WIDTH,
   );
 
+  const { closeEditorLink } = useContext(ApiEditorContext);
+
   /**
    * Variable Editor's resizeable handler for the changing of width
    */
@@ -94,17 +93,13 @@ function GraphQLEditorForm(props: Props) {
     setVariableEditorWidth(newWidth);
   }, []);
 
-  const {
-    onMouseDown,
-    onMouseUp,
-    onTouchStart,
-    resizing,
-  } = useHorizontalResize(
-    sizeableRef,
-    onVariableEditorWidthChange,
-    undefined,
-    true,
-  );
+  const { onMouseDown, onMouseUp, onTouchStart, resizing } =
+    useHorizontalResize(
+      sizeableRef,
+      onVariableEditorWidthChange,
+      undefined,
+      true,
+    );
 
   return (
     <CommonEditorForm
@@ -134,12 +129,14 @@ function GraphQLEditorForm(props: Props) {
             ref={sizeableRef}
             style={{
               width: `${variableEditorWidth}px`,
+              paddingRight: "2px",
             }}
           >
             <VariableEditor actionName={actionName} theme={theme} />
           </ResizeableDiv>
         </BodyWrapper>
       }
+      closeEditorLink={closeEditorLink}
       defaultTabSelected={2}
       formName={API_EDITOR_FORM_NAME}
       paginationUIComponent={
@@ -157,10 +154,12 @@ function GraphQLEditorForm(props: Props) {
 
 const selector = formValueSelector(API_EDITOR_FORM_NAME);
 
-type ReduxDispatchProps = {
+interface ReduxDispatchProps {
   updateDatasource: (datasource: Datasource) => void;
-};
+}
 
+// TODO: Fix this the next time the file is edited
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const mapDispatchToProps = (dispatch: any): ReduxDispatchProps => ({
   updateDatasource: (datasource) => {
     dispatch(change(API_EDITOR_FORM_NAME, "datasource", datasource));
@@ -168,6 +167,8 @@ const mapDispatchToProps = (dispatch: any): ReduxDispatchProps => ({
 });
 
 export default connect(
+  // TODO: Fix this the next time the file is edited
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   (state: AppState, props: { pluginId: string; match?: any }) => {
     const httpMethodFromForm = selector(
       state,
@@ -184,11 +185,11 @@ export default connect(
       );
     }
 
-    // get messages from action itself
-    const { apiId, queryId } = props.match?.params || {};
-    const actionId = queryId || apiId;
-    // const actionId = selector(state, "id");
-    const action = getAction(state, actionId);
+    const { baseApiId, baseQueryId } = props.match?.params || {};
+    const baseActionId = baseQueryId || baseApiId;
+    const action = getActionByBaseId(state, baseActionId);
+    const apiId = action?.id ?? "";
+    const actionName = action?.name ?? "";
     const hintMessages = action?.messages;
 
     const datasourceHeaders =
@@ -197,10 +198,8 @@ export default connect(
       get(datasourceFromAction, "datasourceConfiguration.queryParameters") ||
       [];
 
-    // const apiId = selector(state, "id");
     const currentActionDatasourceId = selector(state, "datasource.id");
 
-    const actionName = getApiName(state, apiId) || "";
     const headers = selector(state, "actionConfiguration.headers");
     let headersCount = 0;
 
@@ -213,6 +212,8 @@ export default connect(
 
     if (Array.isArray(datasourceHeaders)) {
       const validHeaders = datasourceHeaders.filter(
+        // TODO: Fix this the next time the file is edited
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (value: any) => value.key && value.key !== "",
       );
       headersCount += validHeaders.length;
@@ -230,6 +231,8 @@ export default connect(
 
     if (Array.isArray(datasourceParams)) {
       const validParams = datasourceParams.filter(
+        // TODO: Fix this the next time the file is edited
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (value: any) => value.key && value.key !== "",
       );
       paramsCount += validParams.length;
@@ -240,37 +243,21 @@ export default connect(
 
     let hasResponse = false;
     let suggestedWidgets;
-    if (apiId) {
-      const response = getActionData(state, apiId) || EMPTY_RESPONSE;
+    const actionResponse = getActionData(state, apiId);
+    if (actionResponse) {
       hasResponse =
-        !isEmpty(response.statusCode) && response.statusCode[0] === "2";
-      suggestedWidgets = response.suggestedWidgets;
+        !isEmpty(actionResponse.statusCode) &&
+        actionResponse.statusCode[0] === "2";
+      suggestedWidgets = actionResponse.suggestedWidgets;
     }
 
     const actionData = getActionData(state, apiId);
-    let responseDisplayFormat: { title: string; value: string };
-    let responseDataTypes: { key: string; title: string }[];
-    if (!!actionData && actionData.responseDisplayFormat) {
-      responseDataTypes = actionData.dataTypes.map((data) => {
-        return {
-          key: data.dataType,
-          title: data.dataType,
-        };
-      });
-      responseDisplayFormat = {
-        title: actionData.responseDisplayFormat,
-        value: actionData.responseDisplayFormat,
-      };
-    } else {
-      responseDataTypes = [];
-      responseDisplayFormat = {
-        title: "",
-        value: "",
-      };
-    }
+    const { responseDataTypes, responseDisplayFormat } =
+      actionResponseDisplayDataFormats(actionData);
 
     return {
       actionName,
+      actionResponse,
       apiId,
       httpMethodFromForm,
       actionConfigurationHeaders,
@@ -295,6 +282,8 @@ export default connect(
   },
   mapDispatchToProps,
 )(
+  // TODO: Fix this the next time the file is edited
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   reduxForm<Action, any>({
     form: API_EDITOR_FORM_NAME,
     enableReinitialize: true,

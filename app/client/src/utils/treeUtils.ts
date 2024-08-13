@@ -1,7 +1,9 @@
-type Tree = {
+interface Tree {
   children?: Tree[];
+  // TODO: Fix this the next time the file is edited
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   [key: string]: any;
-};
+}
 
 export const traverseTree = (tree: Tree, callback: (tree: Tree) => void) => {
   callback(tree);

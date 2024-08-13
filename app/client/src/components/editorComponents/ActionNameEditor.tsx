@@ -2,85 +2,75 @@ import React, { memo } from "react";
 import { useSelector } from "react-redux";
 
 import { useParams } from "react-router-dom";
-import styled from "styled-components";
 import EditableText, {
   EditInteractionKind,
 } from "components/editorComponents/EditableText";
 import { removeSpecialChars } from "utils/helpers";
-import { AppState } from "@appsmith/reducers";
-import { Action } from "entities/Action";
+import type { AppState } from "ee/reducers";
 
 import { saveActionName } from "actions/pluginActionActions";
-import { Spinner } from "@blueprintjs/core";
-import { Classes } from "@blueprintjs/core";
-import { getAction, getPlugin } from "selectors/entitiesSelector";
-import { Plugin } from "api/PluginApi";
-import NameEditorComponent from "components/utils/NameEditorComponent";
+import { Flex } from "@appsmith/ads";
+import { getActionByBaseId, getPlugin } from "ee/selectors/entitiesSelector";
+import NameEditorComponent, {
+  IconBox,
+  IconWrapper,
+  NameWrapper,
+} from "components/utils/NameEditorComponent";
 import {
+  ACTION_ID_NOT_FOUND_IN_URL,
   ACTION_NAME_PLACEHOLDER,
   createMessage,
-} from "@appsmith/constants/messages";
+} from "ee/constants/messages";
+import { getAssetUrl } from "ee/utils/airgapHelpers";
+import { getSavingStatusForActionName } from "selectors/actionSelectors";
+import type { ReduxAction } from "ee/constants/ReduxActionConstants";
 
-const ApiNameWrapper = styled.div<{ page?: string }>`
-  min-width: 50%;
-  margin-right: 10px;
-  display: flex;
-  justify-content: flex-start;
-  align-content: center;
-  & > div {
-    max-width: 100%;
-    flex: 0 1 auto;
-    font-size: ${(props) => props.theme.fontSizes[5]}px;
-    font-weight: ${(props) => props.theme.fontWeights[2]};
-  }
-
-  ${(props) =>
-    props.page === "API_PANE"
-      ? `  &&& .${Classes.EDITABLE_TEXT_CONTENT}, &&& .${Classes.EDITABLE_TEXT_INPUT} {
-    font-size: ${props.theme.typography.h3.fontSize}px;
-    line-height: ${props.theme.typography.h3.lineHeight}px !important;
-    letter-spacing: ${props.theme.typography.h3.letterSpacing}px;
-    font-weight: ${props.theme.typography.h3.fontWeight};
-  }`
-      : null}
-`;
-
-const ApiIconWrapper = styled.img`
-  width: 24px;
-  height: 24px;
-  margin-right: 8px;
-  align-self: center;
-`;
-
-type ActionNameEditorProps = {
+interface SaveActionNameParams {
+  id: string;
+  name: string;
+}
+interface ActionNameEditorProps {
   /*
     This prop checks if page is API Pane or Query Pane or Curl Pane
     So, that we can toggle between ads editable-text component and existing editable-text component
     Right now, it's optional so that it doesn't impact any other pages other than API Pane.
     In future, when default component will be ads editable-text, then we can remove this prop.
   */
-  page?: string;
+  enableFontStyling?: boolean;
   disabled?: boolean;
-};
+  saveActionName?: (
+    params: SaveActionNameParams,
+  ) => ReduxAction<SaveActionNameParams>;
+}
 
 function ActionNameEditor(props: ActionNameEditorProps) {
-  const params = useParams<{ apiId?: string; queryId?: string }>();
+  const params = useParams<{ baseApiId?: string; baseQueryId?: string }>();
 
-  const currentActionConfig:
-    | Action
-    | undefined = useSelector((state: AppState) =>
-    getAction(state, params.apiId || params.queryId || ""),
+  const currentActionConfig = useSelector((state: AppState) =>
+    getActionByBaseId(state, params.baseApiId || params.baseQueryId || ""),
   );
 
-  const currentPlugin: Plugin | undefined = useSelector((state: AppState) =>
+  const currentPlugin = useSelector((state: AppState) =>
     getPlugin(state, currentActionConfig?.pluginId || ""),
+  );
+
+  const saveStatus = useSelector((state) =>
+    getSavingStatusForActionName(state, currentActionConfig?.id || ""),
   );
 
   return (
     <NameEditorComponent
-      checkForGuidedTour
-      currentActionConfig={currentActionConfig}
-      dispatchAction={saveActionName}
+      /**
+       * This component is used by module editor in EE which uses a different
+       * action to save the name of an action. The current callers of this component
+       * pass the existing saveAction action but as fallback the saveActionName is used here
+       * as a guard.
+       */
+      dispatchAction={props.saveActionName || saveActionName}
+      id={currentActionConfig?.id}
+      idUndefinedErrorMessage={ACTION_ID_NOT_FOUND_IN_URL}
+      name={currentActionConfig?.name}
+      saveStatus={saveStatus}
     >
       {({
         forceUpdate,
@@ -95,17 +85,20 @@ function ActionNameEditor(props: ActionNameEditorProps) {
         isNew: boolean;
         saveStatus: { isSaving: boolean; error: boolean };
       }) => (
-        <ApiNameWrapper page={props.page}>
-          <div
-            style={{
-              display: "flex",
-            }}
+        <NameWrapper enableFontStyling={props.enableFontStyling}>
+          <Flex
+            alignItems="center"
+            gap="spaces-3"
+            overflow="hidden"
+            width="100%"
           >
             {currentPlugin && (
-              <ApiIconWrapper
-                alt={currentPlugin.name}
-                src={currentPlugin.iconLocation}
-              />
+              <IconBox>
+                <IconWrapper
+                  alt={currentPlugin.name}
+                  src={getAssetUrl(currentPlugin?.iconLocation)}
+                />
+              </IconBox>
             )}
             <EditableText
               className="t--action-name-edit-field"
@@ -123,9 +116,8 @@ function ActionNameEditor(props: ActionNameEditorProps) {
               updating={saveStatus.isSaving}
               valueTransform={removeSpecialChars}
             />
-            {saveStatus.isSaving && <Spinner size={16} />}
-          </div>
-        </ApiNameWrapper>
+          </Flex>
+        </NameWrapper>
       )}
     </NameEditorComponent>
   );

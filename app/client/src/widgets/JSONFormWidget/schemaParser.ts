@@ -10,26 +10,28 @@ import {
 import { klona } from "klona";
 
 import { sanitizeKey } from "widgets/WidgetUtils";
+import type {
+  FieldComponentBaseProps,
+  Schema,
+  SchemaItem,
+  FieldThemeStylesheet,
+} from "./constants";
 import {
   ARRAY_ITEM_KEY,
   DATA_TYPE_POTENTIAL_FIELD,
   DataType,
   FIELD_MAP,
   FIELD_TYPE_TO_POTENTIAL_DATA,
-  FieldComponentBaseProps,
   FieldType,
   getBindingTemplate,
   RESTRICTED_KEYS,
   ROOT_SCHEMA_KEY,
-  Schema,
-  SchemaItem,
-  FieldThemeStylesheet,
 } from "./constants";
 import { getFieldStylesheet } from "./helper";
 
 type Obj = Record<string, unknown>;
 
-type ParserOptions = {
+interface ParserOptions {
   baseSchemaPath: string | null;
   currSourceData?: unknown;
   fieldThemeStylesheets?: FieldThemeStylesheet;
@@ -46,26 +48,26 @@ type ParserOptions = {
   sourceDataPath?: string;
   widgetName: string;
   identifier: string;
-};
+}
 
-type SchemaItemsByFieldOptions = {
+interface SchemaItemsByFieldOptions {
   fieldThemeStylesheets?: FieldThemeStylesheet;
   schema: Schema;
   schemaItem: SchemaItem;
   schemaItemPath: string;
   widgetName: string;
-};
+}
 
-type GetKeysFromSchemaOptions = {
+interface GetKeysFromSchemaOptions {
   onlyNonCustomFieldKeys?: boolean;
   onlyCustomFieldKeys?: boolean;
-};
+}
 
-type ParseOptions = {
+interface ParseOptions {
   currSourceData?: unknown;
   schema?: Schema;
   fieldThemeStylesheets?: FieldThemeStylesheet;
-};
+}
 
 function isObject(val: unknown): val is Obj {
   return typeof val === "object" && !Array.isArray(val) && val !== null;
@@ -176,6 +178,8 @@ export const getSourceDataPathFromSchemaItemPath = (
   return sourceDataPath;
 };
 
+// TODO: Fix this the next time the file is edited
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const dataTypeFor = (value: any) => {
   const typeOfValue = typeof value;
 
@@ -185,6 +189,8 @@ export const dataTypeFor = (value: any) => {
   return typeOfValue as DataType;
 };
 
+// TODO: Fix this the next time the file is edited
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const subDataTypeFor = (value: any) => {
   const dataType = dataTypeFor(value);
 
@@ -204,6 +210,8 @@ export const subDataTypeFor = (value: any) => {
  *  normalizeArrayValue([""]) -> ""
  *  normalizeArrayValue([{ foo: 10 }, { bar: "hello"}]) -> { foo: 10, bar: "hello" }
  */
+// TODO: Fix this the next time the file is edited
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const normalizeArrayValue = (data: any[]) => {
   if (subDataTypeFor(data) === DataType.OBJECT) {
     return constructPlausibleObjectFromArray(data);
@@ -212,6 +220,8 @@ export const normalizeArrayValue = (data: any[]) => {
   return data[0];
 };
 
+// TODO: Fix this the next time the file is edited
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const fieldTypeFor = (value: any): FieldType => {
   const dataType = dataTypeFor(value);
   const potentialFieldType = DATA_TYPE_POTENTIAL_FIELD[dataType];
@@ -325,7 +335,11 @@ export const applyPositions = (schema: Schema, newKeys?: string[]) => {
  *  checkIfArrayAndSubDataTypeChanged(["test"], "test") -> false
  */
 export const checkIfArrayAndSubDataTypeChanged = (
+  // TODO: Fix this the next time the file is edited
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   currentData: any,
+  // TODO: Fix this the next time the file is edited
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   prevData: any,
 ) => {
   if (!Array.isArray(currentData) || !Array.isArray(prevData)) return false;
@@ -336,6 +350,8 @@ export const checkIfArrayAndSubDataTypeChanged = (
   return currSubDataType !== prevSubDataType;
 };
 
+// TODO: Fix this the next time the file is edited
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const hasNullOrUndefined = (items: any[]) =>
   items.includes(null) || items.includes(undefined);
 
@@ -365,7 +381,7 @@ class SchemaParser {
    * @param schema Previous generated schema if present.
    */
   static parse = (widgetName: string, options: ParseOptions) => {
-    const { currSourceData, schema = {}, fieldThemeStylesheets } = options;
+    const { currSourceData, fieldThemeStylesheets, schema = {} } = options;
     if (!currSourceData)
       return { schema, modifiedSchemaItems: {}, removedSchemaItems: [] };
 
@@ -707,16 +723,15 @@ class SchemaParser {
   static convertObjectToSchema = ({
     baseSchemaPath,
     currSourceData,
-    removedSchemaItems,
     modifiedSchemaItems,
     prevSchema = {},
+    removedSchemaItems,
     sourceDataPath,
     ...rest
   }: Omit<ParserOptions, "identifier">): Schema => {
     const schema = klona(prevSchema);
-    const origIdentifierToIdentifierMap = mapOriginalIdentifierToSanitizedIdentifier(
-      schema,
-    );
+    const origIdentifierToIdentifierMap =
+      mapOriginalIdentifierToSanitizedIdentifier(schema);
 
     if (!isObject(currSourceData)) {
       return schema;

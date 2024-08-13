@@ -5,13 +5,16 @@ import widgetPropertyFns from "!!raw-loader!./derived.js";
 // Add unit test cases
 // Handle edge cases
 // Error out on wrong values
+// TODO: Fix this the next time the file is edited
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const derivedProperties: any = {};
 // const regex = /(\w+):\s?\(props\)\s?=>\s?{([\w\W]*?)},/gim;
-const regex = /(\w+):\s?\(props, moment, _\)\s?=>\s?{([\w\W\n]*?)},\n?\s+?\/\//gim;
+const regex =
+  /(\w+):\s?\(props, moment, _\)\s?=>\s?{([\w\W\n]*?)},\n?\s+?\/\//gim;
 
 let m;
 
-while ((m = regex.exec((widgetPropertyFns as unknown) as string)) !== null) {
+while ((m = regex.exec(widgetPropertyFns as unknown as string)) !== null) {
   // This is necessary to avoid infinite loops with zero-width matches
   if (m.index === regex.lastIndex) {
     regex.lastIndex++;

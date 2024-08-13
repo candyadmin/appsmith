@@ -1,5 +1,5 @@
 import { GracefulWorkerService } from "./WorkerUtil";
-import { channel, runSaga } from "redux-saga";
+import { runSaga } from "redux-saga";
 
 const MessageType = "message";
 interface extraWorkerProperties {
@@ -11,13 +11,23 @@ interface extraWorkerProperties {
 type WorkerClass = Worker & extraWorkerProperties;
 class MockWorkerClass implements WorkerClass {
   // Implement interface
+  // TODO: Fix this the next time the file is edited
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onmessage: any;
+  // TODO: Fix this the next time the file is edited
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onmessageerror: any;
+  // TODO: Fix this the next time the file is edited
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   dispatchEvent: any;
+  // TODO: Fix this the next time the file is edited
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onerror: any;
 
   callback: CallableFunction;
   noop: CallableFunction;
+  // TODO: Fix this the next time the file is edited
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   messages: Array<any>;
   delayMilliSeconds: number;
   instance: WorkerClass | undefined;
@@ -39,25 +49,32 @@ class MockWorkerClass implements WorkerClass {
     this.running = true;
   }
 
+  // TODO: Fix this the next time the file is edited
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   addEventListener(msgType: string, callback: any) {
     expect(msgType).toEqual(MessageType);
     this.callback = callback;
   }
 
+  // TODO: Fix this the next time the file is edited
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   removeEventListener(msgType: string, callback: any) {
     expect(msgType).toEqual(MessageType);
     expect(callback).toEqual(this.callback);
     this.callback = this.noop;
   }
 
+  // TODO: Fix this the next time the file is edited
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   postMessage(message: any) {
     expect(this.running).toEqual(true);
     expect(this.callback).not.toEqual(this.noop);
     this.messages.push(message);
     const counter = setTimeout(() => {
       const response = {
-        requestId: message.requestId,
-        responseData: message.requestData,
+        messageId: message.messageId,
+        messageType: "RESPONSE",
+        body: { data: message.body.data },
       };
       this.sendEvent({ data: response });
       this.responses.delete(counter);
@@ -65,6 +82,8 @@ class MockWorkerClass implements WorkerClass {
     this.responses.add(counter);
   }
 
+  // TODO: Fix this the next time the file is edited
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   sendEvent(ev: any) {
     expect(this.running).toEqual(true);
     expect(this.callback).not.toEqual(this.noop);
@@ -217,66 +236,5 @@ describe("GracefulWorkerService", () => {
     // wait for shutdown
     await shutdown.toPromise();
     expect(await task.toPromise()).not.toEqual(message);
-  });
-
-  test("duplex request starter", async () => {
-    const MockWorker = new MockWorkerClass();
-    const w = new GracefulWorkerService(MockWorker);
-    await runSaga({}, w.start);
-    // Need this to work with eslint
-    if (MockWorker.instance === undefined) {
-      expect(MockWorker.instance).toBeDefined();
-      return;
-    }
-    const requestData = { message: "Hello" };
-    const method = "duplex_test";
-    MockWorker.instance.postMessage = jest.fn();
-    const duplexRequest = await runSaga(
-      {},
-      w.duplexRequest,
-      method,
-      requestData,
-    );
-    const handlers = await duplexRequest.toPromise();
-    expect(handlers).toHaveProperty("isFinishedChannel");
-    expect(MockWorker.instance.postMessage).toBeCalledWith({
-      method,
-      requestData,
-      requestId: expect.stringContaining(method),
-    });
-  });
-
-  test("duplex response channel handler", async () => {
-    const MockWorker = new MockWorkerClass();
-    const w = new GracefulWorkerService(MockWorker);
-    await runSaga({}, w.start);
-
-    // Need this to work with eslint
-    if (MockWorker.instance === undefined) {
-      expect(MockWorker.instance).toBeDefined();
-      return;
-    }
-    const mainThreadResponseChannel = channel();
-    const workerRequestId = "testID";
-    runSaga(
-      {},
-      // @ts-expect-error: type mismatch
-      w.duplexResponseHandler,
-      mainThreadResponseChannel,
-    );
-    MockWorker.instance.postMessage = jest.fn();
-
-    let randomRequestCount = Math.floor(Math.random() * 10);
-
-    for (randomRequestCount; randomRequestCount > 0; randomRequestCount--) {
-      mainThreadResponseChannel.put({
-        test: randomRequestCount,
-        requestId: workerRequestId,
-      });
-      expect(MockWorker.instance.postMessage).toBeCalledWith({
-        test: randomRequestCount,
-        requestId: workerRequestId,
-      });
-    }
   });
 });

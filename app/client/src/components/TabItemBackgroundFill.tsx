@@ -1,13 +1,14 @@
 import React from "react";
 import styled from "styled-components";
-import { getTypographyByKey, TabProp } from "design-system";
-import { Theme } from "constants/DefaultTheme";
+import type { TabProp } from "@appsmith/ads-old";
+import { getTypographyByKey } from "@appsmith/ads-old";
+import type { Theme } from "constants/DefaultTheme";
 
-type WrapperProps = {
+interface WrapperProps {
   selected: boolean;
   vertical: boolean;
   theme: Theme;
-};
+}
 
 const getFocusedStyles = (props: WrapperProps) => `
   background-color: ${props.theme.colors.tabItemBackgroundFill.highlightBackground};

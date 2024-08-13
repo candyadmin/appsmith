@@ -1,21 +1,21 @@
 import Api from "./Api";
-import { AxiosPromise } from "axios";
-import { ApiResponse } from "api/ApiResponses";
-import { Datasource } from "entities/Datasource";
+import type { AxiosPromise } from "axios";
+import type { ApiResponse } from "api/ApiResponses";
+import type { Datasource } from "entities/Datasource";
 
 class SaasApi extends Api {
   static url = "v1/saas";
-  static getAppsmithToken(
+  static async getAppsmithToken(
     datasourceId: string,
     pageId: string,
-  ): AxiosPromise<ApiResponse<string>> {
+  ): Promise<AxiosPromise<ApiResponse<string>>> {
     return Api.post(`${SaasApi.url}/${datasourceId}/pages/${pageId}/oauth`);
   }
 
-  static getAccessToken(
+  static async getAccessToken(
     datasourceId: string,
     token: string,
-  ): AxiosPromise<ApiResponse<Datasource>> {
+  ): Promise<AxiosPromise<ApiResponse<Datasource>>> {
     return Api.post(
       `${SaasApi.url}/${datasourceId}/token?appsmithToken=${token}`,
     );

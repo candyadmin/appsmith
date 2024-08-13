@@ -1,28 +1,25 @@
 import React, { useCallback, useEffect } from "react";
 import EntityProperty from "./EntityProperty";
-import { isFunction } from "lodash";
-import {
-  entityDefinitions,
-  EntityDefinitionsOptions,
-} from "utils/autocomplete/EntityDefinitions";
-import { ENTITY_TYPE } from "entities/DataTree/dataTreeFactory";
+
 import { useDispatch, useSelector } from "react-redux";
 import PerformanceTracker, {
   PerformanceTransactionName,
 } from "utils/PerformanceTracker";
 import * as Sentry from "@sentry/react";
-import { AppState } from "@appsmith/reducers";
-import { getPropsForJSActionEntity } from "utils/autocomplete/EntityDefinitions";
-import { isEmpty } from "lodash";
-import { getCurrentPageId } from "selectors/editorSelectors";
+import type { AppState } from "ee/reducers";
 import classNames from "classnames";
 import styled from "styled-components";
-import { ControlIcons } from "icons/ControlIcons";
-import { ReduxActionTypes } from "@appsmith/constants/ReduxActionConstants";
-import { JSCollectionData } from "reducers/entityReducers/jsActionsReducer";
-import AnalyticsUtil from "utils/AnalyticsUtil";
-
-const CloseIcon = ControlIcons.CLOSE_CONTROL;
+import { ReduxActionTypes } from "ee/constants/ReduxActionConstants";
+import AnalyticsUtil from "ee/utils/AnalyticsUtil";
+import { EntityClassNames } from ".";
+import { Button } from "@appsmith/ads";
+import { getEntityProperties } from "ee/pages/Editor/Explorer/Entity/getEntityProperties";
+import store from "store";
+import { ENTITY_TYPE } from "entities/DataTree/dataTreeFactory";
+import {
+  APP_SIDEBAR_WIDTH,
+  DEFAULT_EXPLORER_PANE_WIDTH,
+} from "../../../../constants/AppConstants";
 
 const BindingContainerMaxHeight = 300;
 const EntityHeight = 36;
@@ -33,6 +30,9 @@ const EntityInfoContainer = styled.div`
   max-width: 400px;
   max-height: ${BindingContainerMaxHeight}px;
   overflow-y: hidden;
+  border-radius: var(--ads-v2-border-radius);
+  border: 1px solid var(--ads-v2-color-border-muted);
+  box-shadow: var(--ads-v2-shadow-popovers);
 `;
 
 const selectEntityInfo = (state: AppState) => state.ui.explorer.entityInfo;
@@ -40,10 +40,16 @@ const selectEntityInfo = (state: AppState) => state.ui.explorer.entityInfo;
 export function EntityProperties() {
   const ref = React.createRef<HTMLDivElement>();
   const dispatch = useDispatch();
-  const { entityId, entityName, entityType, show } = useSelector(
-    selectEntityInfo,
+  const { entityId, entityName, entityType, show } =
+    useSelector(selectEntityInfo);
+  const entity = useSelector(
+    (state) => entityName && state.evaluations.tree[entityName],
   );
-  const pageId = useSelector(getCurrentPageId) || "";
+
+  const selectedWidgetId = useSelector(
+    (state: AppState) => state.ui.widgetDragResize.lastSelectedWidget,
+  );
+
   PerformanceTracker.startTracking(
     PerformanceTransactionName.ENTITY_EXPLORER_ENTITY,
   );
@@ -52,16 +58,9 @@ export function EntityProperties() {
       PerformanceTransactionName.ENTITY_EXPLORER_ENTITY,
     );
   });
-  const widgetEntity = useSelector((state: AppState) => {
-    const pageWidgets = state.ui.pageWidgets[pageId];
-    if (pageWidgets) {
-      return pageWidgets[entityId];
-    }
-  });
 
   useEffect(() => {
     document.addEventListener("click", handleOutsideClick);
-
     return () => document.removeEventListener("click", handleOutsideClick);
   }, [show]);
 
@@ -74,13 +73,27 @@ export function EntityProperties() {
     }
   }, [entityId]);
 
-  const actionEntity = useSelector((state: AppState) =>
-    state.entities.actions.find((action) => action.config.id === entityId),
-  );
-
-  const jsActionEntity = useSelector((state: AppState) =>
-    state.entities.jsActions.find((js) => js.config.id === entityId),
-  );
+  useEffect(() => {
+    if (selectedWidgetId && show) {
+      const canvasWidgets = store.getState().entities.canvasWidgets;
+      const selectedWidget = canvasWidgets[selectedWidgetId];
+      if (selectedWidget)
+        dispatch({
+          type: ReduxActionTypes.SET_ENTITY_INFO,
+          payload: {
+            show: true,
+            entityId: selectedWidgetId,
+            entityType: ENTITY_TYPE.WIDGET,
+            entityName: selectedWidget.widgetName,
+          },
+        });
+      else
+        dispatch({
+          type: ReduxActionTypes.SET_ENTITY_INFO,
+          payload: { show: false },
+        });
+    }
+  }, [selectedWidgetId]);
 
   const closeContainer = useCallback((e) => {
     e.stopPropagation();
@@ -91,15 +104,12 @@ export function EntityProperties() {
   }, []);
 
   const handleOutsideClick = (e: MouseEvent) => {
-    const appBody = document.getElementById("app-body") as HTMLElement;
+    e.stopPropagation();
+    const entityPropertiesContainer = document.getElementById(
+      "entity-properties-container",
+    ) as HTMLElement;
     const paths = e.composedPath();
-    if (
-      ref &&
-      ref.current &&
-      !paths?.includes(appBody) &&
-      !paths?.includes(ref.current)
-    )
-      closeContainer(e);
+    if (!paths?.includes(entityPropertiesContainer)) closeContainer(e);
   };
 
   useEffect(() => {
@@ -121,117 +131,47 @@ export function EntityProperties() {
         ref.current.style.top = top - EntityHeight + "px";
         ref.current.style.bottom = "unset";
       }
-      ref.current.style.left = (rect ? rect?.width ?? 0 : 0) + "px";
+      ref.current.style.left =
+        APP_SIDEBAR_WIDTH + DEFAULT_EXPLORER_PANE_WIDTH + "px";
     }
   }, [entityId]);
 
-  const entity: any = widgetEntity || actionEntity || jsActionEntity;
-  let config: any;
-  let entityProperties: any = [];
+  if (!entity || !entityName || !entityType) return null;
 
-  if (!entity) return null;
-  switch (entityType) {
-    case ENTITY_TYPE.JSACTION:
-      const jsCollection = entity as JSCollectionData;
-      const properties = getPropsForJSActionEntity(jsCollection);
-      if (properties) {
-        entityProperties = Object.keys(properties).map(
-          (actionProperty: string) => {
-            const value = properties[actionProperty];
-            return {
-              propertyName: actionProperty,
-              entityName: jsCollection.config.name,
-              value: value,
-              entityType,
-            };
-          },
-        );
-      }
-      break;
-    case ENTITY_TYPE.ACTION:
-      config = (entityDefinitions.ACTION as any)(entity as any);
-      if (config) {
-        entityProperties = Object.keys(config)
-          .filter((k) => k.indexOf("!") === -1)
-          .map((actionProperty: string) => {
-            let value = entity[actionProperty];
-            if (actionProperty === "isLoading") {
-              value = entity.isLoading;
-            }
-            if (actionProperty === "run") {
-              value = "Function";
-              actionProperty = actionProperty + "()";
-            }
-            if (actionProperty === "clear") {
-              value = "Function";
-              actionProperty = actionProperty + "()";
-            }
-            if (actionProperty === "data") {
-              if (isEmpty(entity.data) || !entity.data.hasOwnProperty("body")) {
-                value = {};
-              } else {
-                value = entity.data.body;
-              }
-            }
-            return {
-              propertyName: actionProperty,
-              entityName: entityName,
-              value,
-              entityType,
-            };
-          });
-      }
-      break;
-    case ENTITY_TYPE.WIDGET:
-      const type: Exclude<
-        EntityDefinitionsOptions,
-        | "CANVAS_WIDGET"
-        | "ICON_WIDGET"
-        | "SKELETON_WIDGET"
-        | "TABS_MIGRATOR_WIDGET"
-      > = entity.type;
-      config = entityDefinitions[type];
-      if (!config) {
-        return null;
-      }
+  const entityProperties = getEntityProperties({
+    entity,
+    entityName,
+    entityType,
+  });
 
-      if (isFunction(config)) config = config(entity);
-
-      entityProperties = Object.keys(config)
-        .filter((k) => k.indexOf("!") === -1)
-        .map((widgetProperty) => {
-          return {
-            propertyName: widgetProperty,
-            entityName: entity.widgetName,
-            value: entity[widgetProperty],
-            entityType,
-          };
-        });
-      break;
-  }
   return (
     <EntityInfoContainer
       className={classNames({
-        "absolute bp3-popover overflow-y-auto overflow-x-hidden bg-white pb-4 flex flex-col justify-center z-10 delay-150 transition-all": true,
+        "absolute bp3-popover overflow-y-auto overflow-x-hidden bg-white pb-2 flex flex-col justify-center z-10 delay-150 transition-all":
+          true,
+        [EntityClassNames.CONTEXT_MENU_CONTENT]: true,
         "-left-100": !show,
       })}
+      id="entity-properties-container"
       ref={ref}
     >
       <div className="h-auto overflow-y-auto overflow-x-hidden relative">
-        <div className="sticky top-0 text-sm px-3 bg-white z-5 pt-4 pb-1 font-medium flex flex-row items-center justify-between w-[100%]">
-          BINDINGS
-          <CloseIcon
+        <div className="sticky top-0 text-sm px-3 z-5 pt-2 pb-1 font-medium flex flex-row items-center justify-between w-[100%] bg-white">
+          Bindings
+          <Button
             className="t--entity-property-close"
-            color="black"
-            height={18}
+            isIconButton
+            kind="tertiary"
             onClick={closeContainer}
-            width={18}
+            size="sm"
+            startIcon="close-control"
           />
         </div>
-        {entityProperties.map((entityProperty: any) => (
+        {entityProperties.map((entityProperty, index) => (
           <EntityProperty
             key={entityProperty.propertyName}
             {...entityProperty}
+            index={index}
           />
         ))}
       </div>

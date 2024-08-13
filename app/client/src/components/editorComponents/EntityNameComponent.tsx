@@ -8,7 +8,7 @@ import {
   VALID_FUNCTION_NAME_ERROR,
   UNIQUE_NAME_ERROR,
   createMessage,
-} from "@appsmith/constants/messages";
+} from "ee/constants/messages";
 
 const InputContainer = styled.div<{ focused: boolean; isValid: boolean }>`
   align-items: center;
@@ -44,7 +44,7 @@ const EditPen = styled.img`
   width: 14px;
   position: absolute;
   right: 7px;
-  : hover {
+  :hover {
     cursor: pointer;
   }
 `;
@@ -76,6 +76,8 @@ export function validateEntityName(name: string, allNames?: string[]) {
 }
 
 interface EntityNameProps {
+  // TODO: Fix this the next time the file is edited
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onBlur: (event?: any) => void;
   onChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
   value: string;
@@ -105,6 +107,8 @@ class EntityNameComponent extends React.Component<
     };
   }
 
+  // TODO: Fix this the next time the file is edited
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   handleFocus = (event: { target: { select: () => any } }) => {
     event.target.select();
   };
@@ -118,20 +122,17 @@ class EntityNameComponent extends React.Component<
     this.props.onBlur();
   };
 
-  onPressEnter = (event: any) => {
+  // TODO: Fix this the next time the file is edited
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  onClickEnter = (event: any) => {
     event.preventDefault();
     event.target.blur();
   };
 
   render() {
     const { focused } = this.state;
-    const {
-      isValid,
-      onChange,
-      placeholder,
-      validationMessage,
-      value,
-    } = this.props;
+    const { isValid, onChange, placeholder, validationMessage, value } =
+      this.props;
 
     return (
       <ErrorTooltip isOpen={!isValid} message={validationMessage || ""}>
@@ -142,7 +143,7 @@ class EntityNameComponent extends React.Component<
             onFocus={this.onFocus}
             onKeyPress={(e) => {
               if (e.key === "Enter") {
-                this.onPressEnter(e);
+                this.onClickEnter(e);
               }
             }}
             placeholder={placeholder}

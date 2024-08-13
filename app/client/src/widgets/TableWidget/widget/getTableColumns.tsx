@@ -1,7 +1,12 @@
 import { isBoolean, isObject } from "lodash";
-import { CellLayoutProperties, ColumnProperties } from "../component/Constants";
+import type {
+  CellLayoutProperties,
+  ColumnProperties,
+} from "../component/Constants";
 
 export const getPropertyValue = (
+  // TODO: Fix this the next time the file is edited
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   value: any,
   index: number,
   preserveCase = false,
@@ -22,6 +27,8 @@ export const getPropertyValue = (
     return value;
   }
 };
+// TODO: Fix this the next time the file is edited
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const getBooleanPropertyValue = (value: any, index: number) => {
   if (isBoolean(value)) {
     return value;

@@ -1,74 +1,83 @@
-import React, { ChangeEvent } from "react";
+import type { ChangeEvent } from "react";
+import React from "react";
 import ReactDOM from "react-dom";
-import {
-  BaseFieldProps,
-  change,
-  Field,
-  formValueSelector,
-  WrappedFieldInputProps,
-} from "redux-form";
-import CodeEditor, {
-  EditorProps,
-} from "components/editorComponents/CodeEditor";
+import type { BaseFieldProps, WrappedFieldInputProps } from "redux-form";
+import { change, Field, formValueSelector } from "redux-form";
+import type { EditorProps } from "components/editorComponents/CodeEditor";
 import { CodeEditorBorder } from "components/editorComponents/CodeEditor/EditorConfig";
-import { AppState } from "@appsmith/reducers";
+import type { AppState } from "ee/reducers";
 import { connect } from "react-redux";
-import get from "lodash/get";
-import merge from "lodash/merge";
-import {
-  DEFAULT_DATASOURCE,
-  EmbeddedRestDatasource,
-  Datasource,
-} from "entities/Datasource";
-import CodeMirror from "codemirror";
-import {
-  EditorModes,
+import { get, merge } from "lodash";
+import type { EmbeddedRestDatasource, Datasource } from "entities/Datasource";
+import { DEFAULT_DATASOURCE } from "entities/Datasource";
+import type CodeMirror from "codemirror";
+import type {
   EditorTheme,
-  TabBehaviour,
-  EditorSize,
   HintHelper,
 } from "components/editorComponents/CodeEditor/EditorConfig";
 import {
-  bindingMarker,
-  entityMarker,
-} from "components/editorComponents/CodeEditor/markHelpers";
-import { bindingHint } from "components/editorComponents/CodeEditor/hintHelpers";
+  EditorModes,
+  TabBehaviour,
+  EditorSize,
+} from "components/editorComponents/CodeEditor/EditorConfig";
+
+import { entityMarker } from "components/editorComponents/CodeEditor/MarkHelpers/entityMarker";
+import { bindingHintHelper } from "components/editorComponents/CodeEditor/hintHelpers";
 import StoreAsDatasource from "components/editorComponents/StoreAsDatasource";
-import { urlGroupsRegexExp } from "constants/AppsmithActionConstants/ActionConstants";
+import { DATASOURCE_URL_EXACT_MATCH_REGEX } from "constants/AppsmithActionConstants/ActionConstants";
 import styled from "styled-components";
-import { Text, FontWeight, TextType } from "design-system";
 import { getDatasourceInfo } from "pages/Editor/APIEditor/ApiRightPane";
 import * as FontFamilies from "constants/Fonts";
 import { AuthType } from "entities/Datasource/RestAPIForm";
 
 import { getCurrentApplicationId } from "selectors/editorSelectors";
-import { Colors } from "constants/Colors";
 import { Indices } from "constants/Layers";
 import { getExpectedValue } from "utils/validation/common";
 import { ValidationTypes } from "constants/WidgetValidation";
-import { DataTree, ENTITY_TYPE } from "entities/DataTree/dataTreeFactory";
+import type { DataTree } from "entities/DataTree/dataTreeTypes";
+import { ENTITY_TYPE } from "entities/DataTree/dataTreeFactory";
 import { getDataTree } from "selectors/dataTreeSelectors";
-import { KeyValuePair } from "entities/Action";
+import type { KeyValuePair } from "entities/Action";
 import equal from "fast-deep-equal/es6";
 import {
   getDatasource,
   getDatasourcesByPluginId,
-} from "selectors/entitiesSelector";
+} from "ee/selectors/entitiesSelector";
 import { extractApiUrlPath } from "transformers/RestActionTransformer";
+import { getCurrentAppWorkspace } from "ee/selectors/selectedWorkspaceSelectors";
+import { Text } from "@appsmith/ads";
+import { TEMP_DATASOURCE_ID } from "constants/Datasource";
+import LazyCodeEditor from "components/editorComponents/LazyCodeEditor";
+import { getCodeMirrorNamespaceFromEditor } from "utils/getCodeMirrorNamespace";
+import { isDynamicValue } from "utils/DynamicBindingUtils";
+import { isEnvironmentValid } from "ee/utils/Environments";
+import { DEFAULT_DATASOURCE_NAME } from "constants/ApiEditorConstants/ApiEditorConstants";
+import { isString } from "lodash";
+import { getCurrentEnvironmentId } from "ee/selectors/environmentSelectors";
+import {
+  getHasCreateDatasourcePermission,
+  getHasManageDatasourcePermission,
+} from "ee/utils/BusinessFeatures/permissionPageHelpers";
+import { isGACEnabled } from "ee/utils/planHelpers";
+import { selectFeatureFlags } from "ee/selectors/featureFlagsSelectors";
 
-type ReduxStateProps = {
+interface ReduxStateProps {
   workspaceId: string;
-  datasource: Datasource | EmbeddedRestDatasource;
+  currentEnvironment: string;
+  datasource: EmbeddedRestDatasource;
   datasourceList: Datasource[];
+  datasourceObject?: Datasource;
   applicationId?: string;
   dataTree: DataTree;
   actionName: string;
   formName: string;
-};
+  userWorkspacePermissions: string[];
+  isFeatureEnabled: boolean;
+}
 
-type ReduxDispatchProps = {
-  updateDatasource: (datasource: Datasource | EmbeddedRestDatasource) => void;
-};
+interface ReduxDispatchProps {
+  updateDatasource: (datasource: EmbeddedRestDatasource) => void;
+}
 
 type Props = EditorProps &
   ReduxStateProps &
@@ -82,11 +91,11 @@ const DatasourceContainer = styled.div`
   display: flex;
   position: relative;
   align-items: center;
-  height: 35px;
+  height: 36px;
   .t--datasource-editor {
-    background-color: ${Colors.WHITE};
+    background-color: var(--ads-v2-color-bg);
     .cm-s-duotone-light.CodeMirror {
-      background: ${Colors.WHITE};
+      background: var(--ads-v2-color-bg);
     }
     .CodeEditorTarget {
       z-index: ${Indices.Layer5};
@@ -95,43 +104,6 @@ const DatasourceContainer = styled.div`
 
   .t--store-as-datasource {
     margin-left: 10px;
-  }
-`;
-
-const CustomToolTip = styled.span<{ width?: number }>`
-  visibility: hidden;
-  text-align: left;
-  padding: 10px 12px;
-  border-radius: 0px;
-  background-color: ${Colors.CODE_GRAY};
-  color: ${Colors.ALABASTER_ALT};
-  box-shadow: 0px 0px 2px rgba(0, 0, 0, 0.2), 0px 2px 10px rgba(0, 0, 0, 0.1);
-
-  position: absolute;
-  z-index: 1000;
-  bottom: 125%;
-  left: calc(-10px + ${(props) => (props.width ? props.width / 2 : 0)}px);
-  margin-left: -60px;
-
-  opacity: 0;
-  transition: opacity 0.01s 1s ease-in;
-
-  &::after {
-    content: "";
-    position: absolute;
-    top: 100%;
-    left: 50%;
-    height: 14px;
-    width: 14px;
-    margin-left: -5px;
-    border-width: 5px;
-    border-style: solid;
-    border-color: ${Colors.CODE_GRAY} transparent transparent transparent;
-  }
-
-  &.highlighter {
-    visibility: visible;
-    opacity: 1;
   }
 `;
 
@@ -170,8 +142,54 @@ const italicInfoStyles = {
   fontStyle: "italic",
 };
 
+const StyledTooltip = styled.span<{ width?: number }>`
+  visibility: hidden;
+  text-align: left;
+  background-color: var(--ads-v2-color-bg-emphasis-max);
+  border-radius: var(--ads-v2-border-radius);
+  box-shadow:
+    0 2px 4px -2px rgba(0, 0, 0, 0.06),
+    0 4px 8px -2px rgba(0, 0, 0, 0.1);
+  color: var(--ads-v2-color-fg-on-emphasis-max);
+  font-family: var(--ads-v2-font-family);
+  min-height: unset;
+  padding: var(--ads-v2-spaces-3) var(--ads-v2-spaces-4);
+
+  position: absolute;
+  z-index: 100000;
+  max-width: 300px;
+  bottom: 125%;
+  left: calc(-10px + ${(props) => (props.width ? props.width / 2 : 0)}px);
+  margin-left: -60px;
+
+  opacity: 0;
+  transition: opacity 0.01s 1s ease-in;
+
+  &::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    height: 10px;
+    width: 10px;
+    margin-left: -5px;
+    border-width: 5px;
+    border-style: solid;
+    border-color: var(--ads-v2-color-bg-emphasis-max) transparent transparent
+      transparent;
+  }
+
+  &.highlighter {
+    visibility: visible;
+    opacity: 1;
+  }
+`;
+
 //Avoiding styled components since ReactDOM.render cannot directly work with it
-function CustomHint(props: { datasource: Datasource }) {
+function CustomHint(props: {
+  currentEnvironment: string;
+  datasource: Datasource;
+}) {
   return (
     <div style={hintContainerStyles}>
       <div style={mainContainerStyles}>
@@ -181,7 +199,10 @@ function CustomHint(props: { datasource: Datasource }) {
         </span>
       </div>
       <span style={datasourceInfoStyles}>
-        {get(props.datasource, "datasourceConfiguration.url")}
+        {get(
+          props.datasource,
+          `datasourceStorages.${props.currentEnvironment}.datasourceConfiguration.url`,
+        )}
       </span>
     </div>
   );
@@ -236,6 +257,7 @@ class EmbeddedDatasourcePathComponent extends React.Component<
       };
     }
     if (datasource && datasource.hasOwnProperty("id")) {
+      // We are not using datasourceStorages here since EmbeddedDatasources will not have environments
       const datasourceUrl = get(datasource, "datasourceConfiguration.url", "");
       if (value.includes(datasourceUrl)) {
         return {
@@ -247,9 +269,9 @@ class EmbeddedDatasourcePathComponent extends React.Component<
 
     let datasourceUrl = "";
     let path = "";
-    const isFullPath = urlGroupsRegexExp.test(value);
-    if (isFullPath) {
-      const matches = value.match(urlGroupsRegexExp);
+    const isCorrectFullURL = DATASOURCE_URL_EXACT_MATCH_REGEX.test(value);
+    if (isCorrectFullURL) {
+      const matches = value.match(DATASOURCE_URL_EXACT_MATCH_REGEX);
       if (matches && matches.length) {
         datasourceUrl = matches[1];
         path = `${matches[2] || ""}${matches[3] || ""}`;
@@ -257,12 +279,21 @@ class EmbeddedDatasourcePathComponent extends React.Component<
     } else {
       datasourceUrl = value;
     }
+
+    // if there is a dynamic value in datasource url, make it a path.
+    if (isDynamicValue(datasourceUrl)) {
+      path = datasourceUrl + path;
+      datasourceUrl = "";
+    }
+
     return {
       datasourceUrl,
       path,
     };
   };
 
+  // TODO: Fix this the next time the file is edited
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   handleOnChange = (valueOrEvent: ChangeEvent<any> | string) => {
     const value: string =
       typeof valueOrEvent === "string"
@@ -275,7 +306,7 @@ class EmbeddedDatasourcePathComponent extends React.Component<
 
   handleDatasourceHighlight = () => {
     const { datasource } = this.props;
-    const authType = get(
+    const authType: string = get(
       datasource,
       "datasourceConfiguration.authentication.authenticationType",
       "",
@@ -296,7 +327,8 @@ class EmbeddedDatasourcePathComponent extends React.Component<
         editorInstance.lineCount() === 1 &&
         datasource &&
         "id" in datasource &&
-        datasource.id
+        datasource.id &&
+        datasource.id !== TEMP_DATASOURCE_ID
       ) {
         const end = get(datasource, "datasourceConfiguration.url", "").length;
         editorInstance.markText(
@@ -313,7 +345,7 @@ class EmbeddedDatasourcePathComponent extends React.Component<
   };
 
   handleDatasourceHint = (): HintHelper => {
-    const { datasourceList } = this.props;
+    const { currentEnvironment, datasourceList } = this.props;
     return () => {
       return {
         showHint: (editor: CodeMirror.Editor) => {
@@ -329,19 +361,29 @@ class EmbeddedDatasourcePathComponent extends React.Component<
               hint: () => {
                 const list = datasourceList
                   .filter((datasource: Datasource) =>
-                    (datasource.datasourceConfiguration?.url || "").includes(
-                      parsed.datasourceUrl,
-                    ),
+                    (
+                      datasource.datasourceStorages[currentEnvironment]
+                        ?.datasourceConfiguration?.url || ""
+                    ).includes(parsed.datasourceUrl),
                   )
                   .map((datasource: Datasource) => ({
-                    text: datasource.datasourceConfiguration?.url,
+                    text: datasource.datasourceStorages[currentEnvironment]
+                      ?.datasourceConfiguration?.url,
                     data: datasource,
-                    className: !datasource.isValid
+                    className: !isEnvironmentValid(
+                      datasource,
+                      currentEnvironment,
+                    )
                       ? "datasource-hint custom invalid"
                       : "datasource-hint custom",
+                    // TODO: Fix this the next time the file is edited
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     render: (element: HTMLElement, self: any, data: any) => {
                       ReactDOM.render(
-                        <CustomHint datasource={data.data} />,
+                        <CustomHint
+                          currentEnvironment={currentEnvironment}
+                          datasource={data.data}
+                        />,
                         element,
                       );
                     },
@@ -351,11 +393,21 @@ class EmbeddedDatasourcePathComponent extends React.Component<
                   from: { ch: 0, line: 0 },
                   to: editor.getCursor(),
                 };
+
+                const CodeMirror = getCodeMirrorNamespaceFromEditor(editor);
                 CodeMirror.on(
                   hints,
                   "pick",
                   (selected: { text: string; data: Datasource }) => {
-                    this.props.updateDatasource(selected.data);
+                    this.props.updateDatasource({
+                      ...selected.data.datasourceStorages[currentEnvironment],
+                      id: selected.data.id,
+                      invalids: selected.data.invalids || [],
+                      messages: selected.data.messages || [],
+                      pluginId: selected.data.pluginId,
+                      name: selected.data.name,
+                      workspaceId: selected.data.workspaceId,
+                    });
                   },
                 );
                 return hints;
@@ -379,11 +431,18 @@ class EmbeddedDatasourcePathComponent extends React.Component<
     if ("ENTITY_TYPE" in entity && entity.ENTITY_TYPE === ENTITY_TYPE.ACTION) {
       let evaluatedPath = "path" in entity.config ? entity.config.path : "";
 
-      if (evaluatedPath && evaluatedPath.indexOf("?") > -1) {
-        evaluatedPath = extractApiUrlPath(evaluatedPath);
+      if (evaluatedPath) {
+        if (isString(evaluatedPath)) {
+          if (evaluatedPath.indexOf("?") > -1) {
+            evaluatedPath = extractApiUrlPath(evaluatedPath);
+          }
+        } else {
+          evaluatedPath = JSON.stringify(evaluatedPath);
+        }
       }
-      const evaluatedQueryParameters = entity.config.queryParameters
-        ?.filter((p: KeyValuePair) => p.key)
+
+      const evaluatedQueryParameters = entity?.config?.queryParameters
+        ?.filter((p: KeyValuePair) => !!p?.key)
         .map(
           (p: KeyValuePair, i: number) =>
             `${i === 0 ? "?" : "&"}${p.key}=${p.value}`,
@@ -413,8 +472,9 @@ class EmbeddedDatasourcePathComponent extends React.Component<
       (event.currentTarget as HTMLElement).getBoundingClientRect()?.width
     ) {
       this.setState({
-        highlightedElementWidth: (event.currentTarget as HTMLElement).getBoundingClientRect()
-          ?.width,
+        highlightedElementWidth: (
+          event.currentTarget as HTMLElement
+        ).getBoundingClientRect()?.width,
       });
     }
     // add class to trigger custom tooltip to show when mouse enters the component
@@ -428,6 +488,8 @@ class EmbeddedDatasourcePathComponent extends React.Component<
   };
 
   // if the next props is not equal to the current props, do not rerender, same for state
+  // TODO: Fix this the next time the file is edited
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   shouldComponentUpdate(nextProps: any, nextState: any) {
     if (!equal(nextProps, this.props)) {
       return true;
@@ -442,7 +504,10 @@ class EmbeddedDatasourcePathComponent extends React.Component<
     const {
       codeEditorVisibleOverflow,
       datasource,
+      datasourceObject,
       input: { value },
+      isFeatureEnabled,
+      userWorkspacePermissions,
     } = this.props;
     const datasourceUrl = get(datasource, "datasourceConfiguration.url", "");
     const displayValue = `${datasourceUrl}${value}`;
@@ -451,6 +516,24 @@ class EmbeddedDatasourcePathComponent extends React.Component<
       value: displayValue,
       onChange: this.handleOnChange,
     };
+    const shouldSave = datasource && !("id" in datasource);
+    const isGACFeatureEnabled = isFeatureEnabled;
+
+    const canCreateDatasource = getHasCreateDatasourcePermission(
+      isGACFeatureEnabled,
+      userWorkspacePermissions,
+    );
+
+    const datasourcePermissions = datasourceObject?.userPermissions || [];
+
+    const canManageDatasource = getHasManageDatasourcePermission(
+      isFeatureEnabled,
+      datasourcePermissions,
+    );
+
+    const isEnabled =
+      (shouldSave && canCreateDatasource) ||
+      (!shouldSave && canManageDatasource);
 
     const props: EditorProps = {
       ...this.props,
@@ -459,8 +542,8 @@ class EmbeddedDatasourcePathComponent extends React.Component<
       theme: this.props.theme,
       tabBehaviour: TabBehaviour.INPUT,
       size: EditorSize.COMPACT,
-      marking: [bindingMarker, this.handleDatasourceHighlight(), entityMarker],
-      hinting: [bindingHint, this.handleDatasourceHint()],
+      marking: [this.handleDatasourceHighlight(), entityMarker],
+      hinting: [bindingHintHelper, this.handleDatasourceHint()],
       showLightningMenu: false,
       fill: true,
       expected: getExpectedValue({ type: ValidationTypes.SAFE_URL }),
@@ -472,44 +555,37 @@ class EmbeddedDatasourcePathComponent extends React.Component<
     };
 
     return (
-      <DatasourceContainer data-replay-id={btoa(props.input.name || "")}>
-        <CodeEditor
+      <DatasourceContainer data-location-id={btoa(props.input.name || "")}>
+        <LazyCodeEditor
           {...props}
           border={CodeEditorBorder.ALL_SIDE}
           className="t--datasource-editor"
           evaluatedValue={this.handleEvaluatedValue()}
           focusElementName={`${this.props.actionName}.url`}
         />
-        {datasource && datasource.name !== "DEFAULT_REST_DATASOURCE" && (
-          <CustomToolTip
-            id="custom-tooltip"
-            width={this.state.highlightedElementWidth}
-          >
-            <Text
-              color={Colors.ALABASTER_ALT}
-              style={{ fontSize: "10px", display: "block", fontWeight: 600 }}
-              type={TextType.SIDE_HEAD}
-              weight={FontWeight.BOLD}
+        {datasourceObject &&
+          datasourceObject.name !== DEFAULT_DATASOURCE_NAME && (
+            <StyledTooltip
+              id="custom-tooltip"
+              width={this.state.highlightedElementWidth}
             >
-              Datasource
-            </Text>{" "}
-            <Text
-              color={Colors.ALABASTER_ALT}
-              style={{ display: "block" }}
-              type={TextType.P3}
-            >
-              {" "}
-              {datasource?.name}{" "}
-            </Text>
-          </CustomToolTip>
-        )}
+              <Text
+                color="var(--ads-v2-color-fg-on-emphasis-max)"
+                kind="body-s"
+              >
+                {`Datasource ${datasourceObject?.name}`}
+              </Text>
+            </StyledTooltip>
+          )}
         {displayValue && (
           <StoreAsDatasource
             datasourceId={
-              datasource && "id" in datasource ? datasource.id : undefined
+              datasourceObject && "id" in datasourceObject
+                ? datasourceObject.id
+                : undefined
             }
-            enable
-            shouldSave={datasource && !("id" in datasource)}
+            enable={isEnabled}
+            shouldSave={shouldSave}
           />
         )}
       </DatasourceContainer>
@@ -519,14 +595,23 @@ class EmbeddedDatasourcePathComponent extends React.Component<
 
 const mapStateToProps = (
   state: AppState,
-  ownProps: { pluginId: string; actionName: string; formName: string },
+  ownProps: {
+    pluginId: string;
+    actionName: string;
+    formName: string;
+    isFeatureEnabled: boolean;
+  },
 ): ReduxStateProps => {
   const apiFormValueSelector = formValueSelector(ownProps.formName);
   const datasourceFromAction = apiFormValueSelector(state, "datasource");
   let datasourceMerged = datasourceFromAction || {};
+  let datasourceFromDataSourceList: Datasource | undefined;
+  const currentEnvironment = getCurrentEnvironmentId(state);
+  const featureFlags = selectFeatureFlags(state);
+  const isFeatureEnabled = isGACEnabled(featureFlags);
   // Todo: fix this properly later in #2164
   if (datasourceFromAction && "id" in datasourceFromAction) {
-    const datasourceFromDataSourceList = getDatasource(
+    datasourceFromDataSourceList = getDatasource(
       state,
       datasourceFromAction.id,
     );
@@ -534,24 +619,33 @@ const mapStateToProps = (
       datasourceMerged = merge(
         {},
         datasourceFromAction,
-        datasourceFromDataSourceList,
+        datasourceFromDataSourceList.datasourceStorages[currentEnvironment],
       );
     }
   }
 
   return {
-    workspaceId: state.ui.workspaces.currentWorkspace.id,
+    workspaceId: state.ui.selectedWorkspace.workspace.id,
+    currentEnvironment,
     datasource: datasourceMerged,
     datasourceList: getDatasourcesByPluginId(state, ownProps.pluginId),
+    datasourceObject: datasourceFromDataSourceList,
     applicationId: getCurrentApplicationId(state),
     dataTree: getDataTree(state),
     actionName: ownProps.actionName,
     formName: ownProps.formName,
+    userWorkspacePermissions:
+      getCurrentAppWorkspace(state)?.userPermissions ?? [],
+    isFeatureEnabled: isFeatureEnabled,
   };
 };
 
 const mapDispatchToProps = (
+  // TODO: Fix this the next time the file is edited
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   dispatch: any,
+  // TODO: Fix this the next time the file is edited
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ownProps: any,
 ): ReduxDispatchProps => ({
   updateDatasource: (datasource) =>

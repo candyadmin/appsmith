@@ -1,11 +1,11 @@
 import { Colors } from "constants/Colors";
 import { darkenColor } from "widgets/WidgetUtils";
 
-type Position = {
+interface Position {
   value: number;
   min: number;
   max: number;
-};
+}
 
 /**
  *
@@ -16,7 +16,7 @@ export function getPosition({ max, min, value }: Position) {
   return Math.min(Math.max(position, 0), 100);
 }
 
-type ChangeValue = {
+interface ChangeValue {
   value: number;
   min: number;
   max: number;
@@ -26,7 +26,7 @@ type ChangeValue = {
    * container width is passed in case of RangeSlider
    */
   containerWidth?: number;
-};
+}
 
 export function getChangeValue({
   containerWidth,
@@ -46,6 +46,8 @@ export function getChangeValue({
   return Math.max(Math.min(nextValue, max), min);
 }
 
+// TODO: Fix this the next time the file is edited
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function getClientPosition(event: any) {
   if ("TouchEvent" in window && event instanceof window.TouchEvent) {
     const touch = event.touches[0];
@@ -59,11 +61,13 @@ export function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
 }
 
-type MarkedFilled = {
+interface MarkedFilled {
+  // TODO: Fix this the next time the file is edited
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   mark: { value: number; label?: any };
   offset?: number;
   value: number;
-};
+}
 
 export function isMarkedFilled({ mark, offset, value }: MarkedFilled) {
   return typeof offset === "number"

@@ -1,14 +1,9 @@
 import React from "react";
 import styled from "styled-components";
-import {
-  Checkbox as BlueprintCheckbox,
-  ICheckboxProps,
-} from "@blueprintjs/core";
-import {
-  IntentColors,
-  Intent,
-  getBorderCSSShorthand,
-} from "constants/DefaultTheme";
+import type { ICheckboxProps } from "@blueprintjs/core";
+import { Checkbox as BlueprintCheckbox } from "@blueprintjs/core";
+import type { Intent } from "constants/DefaultTheme";
+import { IntentColors, getBorderCSSShorthand } from "constants/DefaultTheme";
 
 export type CheckboxProps = ICheckboxProps & {
   intent: Intent;
@@ -40,6 +35,8 @@ export const StyledCheckbox = styled(BlueprintCheckbox)<CheckboxProps>`
 `;
 
 export function Checkbox(props: CheckboxProps) {
+  // TODO: Fix this the next time the file is edited
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleChange = (e: any) => {
     props.input &&
       props.input.onChange &&

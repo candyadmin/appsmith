@@ -3,6 +3,7 @@ import {
   widgetCanvasFactory,
 } from "test/factories/WidgetFactoryUtils";
 import { render, fireEvent } from "test/testUtils";
+import { screen } from "@testing-library/react";
 import * as widgetRenderUtils from "utils/widgetRenderUtils";
 import * as dataTreeSelectors from "selectors/dataTreeSelectors";
 import * as editorSelectors from "selectors/editorSelectors";
@@ -19,28 +20,29 @@ describe("Tabs widget functional cases", () => {
     .spyOn(dataTreeSelectors, "getWidgetEvalValues")
     .mockImplementation(mockGetWidgetEvalValues);
   jest
-    .spyOn(editorSelectors, "computeMainContainerWidget")
+    .spyOn(editorSelectors, "computeMainContainerWidget") // TODO: Fix this the next time the file is edited
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     .mockImplementation((widget) => widget as any);
   jest
     .spyOn(widgetRenderUtils, "createCanvasWidget")
     .mockImplementation(mockCreateCanvasWidget);
 
   it("Should render 2 tabs by default", () => {
+    // TODO: Fix this the next time the file is edited
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const children: any = buildChildren([{ type: "TABS_WIDGET" }]);
+    // TODO: Fix this the next time the file is edited
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const dsl: any = widgetCanvasFactory.build({
       children,
     });
-    const component = render(
+    render(
       <MockPageDSL dsl={dsl}>
-        <Canvas
-          canvasWidth={dsl.rightColumn}
-          pageId="page_id"
-          widgetsStructure={dsl}
-        />
+        <Canvas canvasWidth={dsl.rightColumn} widgetsStructure={dsl} />
       </MockPageDSL>,
     );
-    const tab1 = component.queryByText("Tab 1");
-    const tab2 = component.queryByText("Tab 2");
+    const tab1 = screen.queryByText("Tab 1");
+    const tab2 = screen.queryByText("Tab 2");
     expect(tab1).toBeDefined();
     expect(tab2).toBeDefined();
   });
@@ -54,22 +56,24 @@ describe("Tabs widget functional cases", () => {
       { type: "INPUT_WIDGET_V2", text: "Tab2 Text" },
       { type: "BUTTON_WIDGET", label: "Tab2 Button" },
     ]);
+    // TODO: Fix this the next time the file is edited
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const children: any = buildChildren([{ type: "TABS_WIDGET" }]);
     children[0].children[0].children = tab1Children;
     children[0].children[1].children = tab2Children;
+    // TODO: Fix this the next time the file is edited
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const dsl: any = widgetCanvasFactory.build({
       children,
     });
     const component = render(
       <MockPageDSL dsl={dsl}>
-        <Canvas
-          canvasWidth={dsl.rightColumn}
-          pageId="page_id"
-          widgetsStructure={dsl}
-        />
+        <Canvas canvasWidth={dsl.rightColumn} widgetsStructure={dsl} />
       </MockPageDSL>,
     );
     const tab1 = component.queryByText("Tab 1");
+    // TODO: Fix this the next time the file is edited
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const tab2: any = component.queryByText("Tab 2");
     expect(tab1).toBeDefined();
     expect(tab2).toBeDefined();

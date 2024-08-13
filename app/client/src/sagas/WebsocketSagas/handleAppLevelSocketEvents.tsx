@@ -2,14 +2,11 @@ import { put } from "redux-saga/effects";
 import { APP_LEVEL_SOCKET_EVENTS } from "./socketEvents";
 
 import { collabSetAppEditors } from "actions/appCollabActions";
-import { Toaster, Variant } from "design-system";
-import {
-  createMessage,
-  INFO_VERSION_MISMATCH_FOUND_RELOAD_REQUEST,
-} from "@appsmith/constants/messages";
-import React from "react";
-import { getAppsmithConfigs } from "@appsmith/configs";
+import { getAppsmithConfigs } from "ee/configs";
+import { handleVersionUpdate } from "./versionUpdatePrompt";
 
+// TODO: Fix this the next time the file is edited
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export default function* handleAppLevelSocketEvents(event: any) {
   switch (event.type) {
     // Collab V2 - Realtime Editing
@@ -20,14 +17,8 @@ export default function* handleAppLevelSocketEvents(event: any) {
     // notification on release version
     case APP_LEVEL_SOCKET_EVENTS.RELEASE_VERSION_NOTIFICATION: {
       const { appVersion } = getAppsmithConfigs();
-      if (appVersion.id && appVersion.id != event.payload[0]) {
-        Toaster.show({
-          text: createMessage(INFO_VERSION_MISMATCH_FOUND_RELOAD_REQUEST),
-          variant: Variant.info,
-          actionElement: <span onClick={() => location.reload()}>REFRESH</span>,
-          autoClose: false,
-        });
-      }
+      const [serverVersion] = event.payload;
+      handleVersionUpdate(appVersion, serverVersion);
       return;
     }
   }

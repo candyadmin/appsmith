@@ -1,32 +1,34 @@
 import React from "react";
-import { ApplicationVersion } from "actions/applicationActions";
-import { builderURL } from "RouteBuilder";
-import { ReduxActionTypes } from "@appsmith/constants/ReduxActionConstants";
+import { ApplicationVersion } from "ee/actions/applicationActions";
+import { builderURL } from "ee/RouteBuilder";
+import { ReduxActionTypes } from "ee/constants/ReduxActionConstants";
 import { selectURLSlugs } from "selectors/editorSelectors";
 import store from "store";
 import { render } from "test/testUtils";
-import { getUpdatedRoute, isURLDeprecated } from "utils/helpers";
 import {
-  fetchApplicationMockResponse,
+  getUpdatedRoute,
+  isURLDeprecated,
+  matchPath_BuilderCustomSlug,
+  matchPath_ViewerCustomSlug,
+} from "utils/helpers";
+import {
+  mockApplicationPayload,
   setMockApplication,
   setMockPageList,
+  updateMockCurrentPage,
   updatedApplicationPayload,
   updatedPagePayload,
 } from "./mockData";
-import ManualUpgrades from "pages/Editor/BottomBar/ManualUpgrades";
+import ManualUpgrades from "components/BottomBar/ManualUpgrades";
 import { updateCurrentPage } from "actions/pageActions";
-import urlBuilder from "entities/URLRedirect/URLAssembly";
-import { Icon, IconSize } from "design-system";
-import { Colors } from "constants/Colors";
+import urlBuilder from "ee/entities/URLRedirect/URLAssembly";
+import { Button } from "@appsmith/ads";
 
 describe("URL slug names", () => {
   beforeEach(async () => {
     setMockApplication();
     setMockPageList();
-    store.dispatch({
-      type: ReduxActionTypes.SWITCH_CURRENT_PAGE_ID,
-      payload: { id: "605c435a91dea93f0eaf91ba", slug: "page-1" },
-    });
+    updateMockCurrentPage();
   });
 
   it("verifies right slug names from slugs selector", () => {
@@ -73,10 +75,12 @@ describe("URL slug names", () => {
   });
 
   it("verifies that the baseURLBuilder uses applicationVersion", () => {
+    const baseApplicationId = "a0123456789abcdef0000000";
+    const basePageId = "b0123456789abcdef0000000";
     const params = {
-      applicationId: "appId",
+      baseApplicationId,
       applicationSlug: "appSlug",
-      pageId: "pageId",
+      basePageId,
       pageSlug: "pageSlug",
       customSlug: "customSlug",
     };
@@ -84,52 +88,56 @@ describe("URL slug names", () => {
       {
         applicationVersion: ApplicationVersion.DEFAULT,
         applicationSlug: params.applicationSlug,
-        applicationId: params.applicationId,
+        baseApplicationId: params.baseApplicationId,
       },
       [
         {
-          pageId: params.pageId,
+          basePageId: params.basePageId,
           pageSlug: params.pageSlug,
         },
       ],
     );
-    const url1 = builderURL({ pageId: params.pageId });
+    const url1 = builderURL({ basePageId: params.basePageId });
     urlBuilder.updateURLParams({
       applicationVersion: ApplicationVersion.SLUG_URL,
     });
-    const url2 = builderURL({ pageId: params.pageId });
+    const url2 = builderURL({ basePageId: params.basePageId });
     store.dispatch({
       type: ReduxActionTypes.UPDATE_APPLICATION_SUCCESS,
       payload: { applicationVersion: ApplicationVersion.DEFAULT },
     });
-    const url3 = builderURL({ pageId: params.pageId });
+    const url3 = builderURL({ basePageId: params.basePageId });
     store.dispatch({
       type: ReduxActionTypes.UPDATE_APPLICATION_SUCCESS,
       payload: { applicationVersion: ApplicationVersion.SLUG_URL },
     });
-    const url4 = builderURL({ pageId: params.pageId });
-    expect(url1).toBe("/applications/appId/pages/pageId/edit");
-    expect(url2).toBe("/app/appSlug/pageSlug-pageId/edit");
-    expect(url3).toBe("/applications/appId/pages/pageId/edit");
-    expect(url4).toBe("/app/appSlug/pageSlug-pageId/edit");
+    const url4 = builderURL({ basePageId: params.basePageId });
+    expect(url1).toBe(
+      `/applications/${baseApplicationId}/pages/${basePageId}/edit`,
+    );
+    expect(url2).toBe(`/app/appSlug/pageSlug-${basePageId}/edit`);
+    expect(url3).toBe(
+      `/applications/${baseApplicationId}/pages/${basePageId}/edit`,
+    );
+    expect(url4).toBe(`/app/appSlug/pageSlug-${basePageId}/edit`);
   });
 
   it("tests the manual upgrade option", () => {
     store.dispatch({
       type: ReduxActionTypes.FETCH_APPLICATION_SUCCESS,
       payload: {
-        ...fetchApplicationMockResponse.data.application,
-        pages: fetchApplicationMockResponse.data.pages,
+        ...mockApplicationPayload,
         applicationVersion: 1,
       },
     });
     const component = render(
       <ManualUpgrades showTooltip>
-        <Icon
+        <Button
           className="t--upgrade"
-          fillColor={Colors.SCORPION}
-          name="upgrade"
-          size={IconSize.XXXL}
+          isIconButton
+          kind="tertiary"
+          size="md"
+          startIcon="upgrade"
         />
       </ManualUpgrades>,
     );
@@ -145,10 +153,8 @@ describe("URL slug names", () => {
       type: ReduxActionTypes.UPDATE_PAGE_SUCCESS,
       payload: updatedPagePayload,
     });
-    const {
-      applicationSlug,
-      pageSlug: updatedPageSlug,
-    } = urlBuilder.getURLParams(updatedPagePayload.id);
+    const { applicationSlug, pageSlug: updatedPageSlug } =
+      urlBuilder.getURLParams(updatedPagePayload.id);
 
     expect(applicationSlug).toBe(updatedApplicationPayload.slug);
 
@@ -174,5 +180,28 @@ describe("URL slug names", () => {
         pageSlug: "page",
       }),
     ).toBe("/app/my-app/page-605c435a91dea93f0eaf91ba/edit");
+  });
+
+  it("getUpdatedRoute - handles pattern match overlap with slug url and custom slug url", () => {
+    // this path will match with VIEWER_PATH and BUILDER_CUSTOM_PATH
+    const customSlug_pathname =
+      "/app/custom-63c63d944ae4345e31af12a7/edit/saas/google-sheets-plugin/api/63c63d984ae4345e31af12e5";
+
+    // verify path match overlap
+    const matchBuilderCustomPath =
+      matchPath_BuilderCustomSlug(customSlug_pathname);
+    const matchViewerSlugPath = matchPath_ViewerCustomSlug(customSlug_pathname);
+    expect(matchViewerSlugPath).not.toBeNull();
+    expect(matchBuilderCustomPath).not.toBeNull();
+
+    // verify proper url is returned regarless of match overlap
+    expect(
+      getUpdatedRoute(customSlug_pathname, {
+        applicationSlug: "gsheetreleasetesting-copy",
+        customSlug: "custom",
+        basePageId: "63c63d944ae4345e31af12a7",
+        pageSlug: "basicpagination",
+      }),
+    ).toBe(customSlug_pathname);
   });
 });

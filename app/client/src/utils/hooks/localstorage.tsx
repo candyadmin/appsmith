@@ -2,7 +2,7 @@ import { useState } from "react";
 import localStorage from "utils/localStorage";
 import log from "loglevel";
 
-export function useLocalStorage(key: string, initialValue: string) {
+export function useLocalStorage(key: string, initialValue?: unknown) {
   // State to store our value
   // Pass initial state function to useState so logic is only executed once
   const [storedValue, setStoredValue] = useState(() => {
@@ -20,6 +20,8 @@ export function useLocalStorage(key: string, initialValue: string) {
 
   // Return a wrapped version of useState's setter function that ...
   // ... persists the new value to localStorage.
+  // TODO: Fix this the next time the file is edited
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const setValue = (value: any) => {
     try {
       // Allow value to be a function so we have same API as useState

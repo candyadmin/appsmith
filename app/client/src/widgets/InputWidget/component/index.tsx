@@ -1,18 +1,17 @@
-import React, { MutableRefObject } from "react";
+import type { MutableRefObject } from "react";
+import React from "react";
 import styled from "styled-components";
-import { ComponentProps } from "widgets/BaseComponent";
-import { TextSize, TEXT_SIZES } from "constants/WidgetConstants";
+import type { ComponentProps } from "widgets/BaseComponent";
+import type { TextSize } from "constants/WidgetConstants";
+import { TEXT_SIZES } from "constants/WidgetConstants";
+import type { Alignment, Intent, IconName, IRef } from "@blueprintjs/core";
 import {
-  Alignment,
-  Intent,
   NumericInput,
-  IconName,
   InputGroup,
   Classes,
   ControlGroup,
   TextArea,
   Tag,
-  IRef,
 } from "@blueprintjs/core";
 
 import { Colors } from "constants/Colors";
@@ -20,8 +19,9 @@ import _ from "lodash";
 import {
   createMessage,
   INPUT_WIDGET_DEFAULT_VALIDATION_ERROR,
-} from "@appsmith/constants/messages";
-import { InputType, InputTypes } from "../constants";
+} from "ee/constants/messages";
+import type { InputType } from "../constants";
+import { InputTypes } from "../constants";
 
 import CurrencyTypeDropdown, {
   CurrencyDropdownOptions,
@@ -37,12 +37,12 @@ import ErrorTooltip from "components/editorComponents/ErrorTooltip";
 import { limitDecimalValue, getSeparators } from "./utilities";
 import { getBaseWidgetClassName } from "constants/componentClassNameConstants";
 import { LabelPosition } from "components/constants";
-import {
-  Icon,
-  LabelWithTooltip,
+import { Icon } from "@design-system/widgets-old";
+import LabelWithTooltip, {
   labelLayoutStyles,
   LABEL_CONTAINER_CLASS,
-} from "design-system";
+} from "widgets/components/LabelWithTooltip";
+import { checkInputTypeText } from "widgets/BaseInputWidget/utils";
 
 /**
  * All design system component specific logic goes here.
@@ -204,12 +204,12 @@ const InputComponentWrapper = styled((props) => (
       labelPosition === LabelPosition.Top
         ? `flex-start`
         : compactMode
-        ? `center`
-        : labelPosition === LabelPosition.Left
-        ? inputType === InputTypes.TEXT
-          ? `stretch`
-          : `center`
-        : `flex-start`};
+          ? `center`
+          : labelPosition === LabelPosition.Left
+            ? checkInputTypeText(inputType)
+              ? `stretch`
+              : `center`
+            : `flex-start`};
   }
 `;
 
@@ -299,6 +299,8 @@ class InputComponent extends React.Component<
 
   componentDidMount() {
     if (this.props.inputType === InputTypes.CURRENCY) {
+      // TODO: Fix this the next time the file is edited
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const element: any = document.querySelectorAll(
         `.${getBaseWidgetClassName(this.props.widgetId)} .bp3-button`,
       );
@@ -314,6 +316,8 @@ class InputComponent extends React.Component<
       this.props.inputType === InputTypes.CURRENCY &&
       this.props.inputType !== prevProps.inputType
     ) {
+      // TODO: Fix this the next time the file is edited
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const element: any = document.querySelectorAll(
         `.${getBaseWidgetClassName(this.props.widgetId)} .bp3-button`,
       );
@@ -326,6 +330,8 @@ class InputComponent extends React.Component<
 
   componentWillUnmount() {
     if (this.props.inputType === InputTypes.CURRENCY) {
+      // TODO: Fix this the next time the file is edited
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const element: any = document.querySelectorAll(
         `.${getBaseWidgetClassName(this.props.widgetId)} .bp3-button`,
       );
@@ -573,9 +579,7 @@ class InputComponent extends React.Component<
             />
           ) : this.props.iconName && this.props.iconAlign === "right" ? (
             <Tag icon={this.props.iconName} />
-          ) : (
-            undefined
-          )
+          ) : undefined
         }
         spellCheck={this.props.spellCheck}
         type={this.getType(this.props.inputType)}

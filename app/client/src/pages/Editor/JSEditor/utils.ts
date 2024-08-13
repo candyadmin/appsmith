@@ -1,23 +1,26 @@
-import { parse, Node } from "acorn";
+import type { Node } from "acorn";
+import { parse } from "acorn";
 import { ancestor } from "acorn-walk";
-import { CodeEditorGutter } from "components/editorComponents/CodeEditor";
-import { JSAction, JSCollection } from "entities/JSCollection";
+import type { CodeEditorGutter } from "components/editorComponents/CodeEditor";
+import type { JSAction, JSCollection } from "entities/JSCollection";
 import {
   RUN_GUTTER_CLASSNAME,
   RUN_GUTTER_ID,
   NO_FUNCTION_DROPDOWN_OPTION,
 } from "./constants";
-import { DropdownOption } from "design-system";
+import type { DropdownOption } from "@appsmith/ads-old";
 import { find, memoize } from "lodash";
+import type { PropertyNode } from "@shared/ast";
 import {
   isLiteralNode,
   isPropertyNode,
-  PropertyNode,
   ECMA_VERSION,
   NodeTypes,
   SourceType,
 } from "@shared/ast";
-import { EventLocation } from "utils/AnalyticsUtil";
+import type { EventLocation } from "ee/utils/analyticsUtilTypes";
+import log from "loglevel";
+import type CodeMirror from "codemirror";
 
 export interface JSActionDropdownOption extends DropdownOption {
   data: JSAction | null;
@@ -43,6 +46,49 @@ export const isCursorWithinNode = (
 
 const getNameFromPropertyNode = (node: PropertyNode): string =>
   isLiteralNode(node.key) ? String(node.key.value) : node.key.name;
+
+export const getJSFunctionLocationFromCursor = (
+  code: string,
+  currentCursor: CodeMirror.Position,
+): {
+  cursorLineNumber: number;
+  functionString: string;
+  functionName: string;
+} => {
+  let functionString = "";
+  let cursorLineNumber = 0;
+  let functionName = "";
+
+  try {
+    const ast = getAST(code, SourceType.module);
+
+    ancestor(ast, {
+      Property(node, ancestors: Node[]) {
+        // We are only interested in identifiers at this depth (exported object keys)
+        const depth = ancestors.length - 3;
+        if (
+          isPropertyNode(node) &&
+          (node.value.type === NodeTypes.ArrowFunctionExpression ||
+            node.value.type === NodeTypes.FunctionExpression) &&
+          node.loc &&
+          isCursorWithinNode(node.loc, currentCursor.line + 1) &&
+          ancestors[depth] &&
+          ancestors[depth].type === NodeTypes.ExportDefaultDeclaration
+        ) {
+          functionString = code.slice(node.start, node.end);
+          // +1 for adjusting the 0 based and 1 based line numbers
+          // +1 for counting the function name line, therefor we need to add +2
+          cursorLineNumber = currentCursor.line - node.loc.start.line + 2;
+          functionName = getNameFromPropertyNode(node);
+        }
+      },
+    });
+  } catch (e) {
+    log.error(e);
+  }
+
+  return { cursorLineNumber, functionName, functionString };
+};
 
 // Function to get start line of js function from code, returns null if function not found
 export const getJSFunctionStartLineFromCode = (
@@ -81,6 +127,40 @@ export const getJSFunctionStartLineFromCode = (
   return result;
 };
 
+export const getJSPropertyLineFromName = (
+  code: string,
+  functionName: string,
+): { line: number; ch: number } | null => {
+  let ast: Node = { end: 0, start: 0, type: "" };
+  let result: { line: number; ch: number } | null = null;
+  try {
+    ast = getAST(code, SourceType.module);
+  } catch (e) {
+    return result;
+  }
+
+  ancestor(ast, {
+    Property(node, ancestors: Node[]) {
+      // We are only interested in identifiers at this depth (exported object keys)
+      const depth = ancestors.length - 3;
+      if (
+        isPropertyNode(node) &&
+        node.loc &&
+        getNameFromPropertyNode(node) === functionName &&
+        ancestors[depth] &&
+        ancestors[depth].type === NodeTypes.ExportDefaultDeclaration
+      ) {
+        // 1 is subtracted because codeMirror's line is zero-indexed, this isn't
+        result = {
+          line: node.loc.start.line - 1,
+          ch: node.loc.start.column,
+        };
+      }
+    },
+  });
+  return result;
+};
+
 export const createGutterMarker = (gutterOnclick: () => void) => {
   const marker = document.createElement("button");
   // For most browsers the default type of button is submit, this causes the page to reload when marker is clicked
@@ -88,12 +168,12 @@ export const createGutterMarker = (gutterOnclick: () => void) => {
   marker.type = "button";
   marker.innerHTML = "&#9654;";
   marker.classList.add(RUN_GUTTER_CLASSNAME);
-  marker.onmousedown = function(e) {
+  marker.onmousedown = function (e) {
     e.preventDefault();
     gutterOnclick();
   };
   // Allows executing functions (via run gutter) when devtool is open
-  marker.ontouchstart = function(e) {
+  marker.ontouchstart = function (e) {
     e.preventDefault();
     gutterOnclick();
   };
@@ -102,9 +182,10 @@ export const createGutterMarker = (gutterOnclick: () => void) => {
 
 export const getJSFunctionLineGutter = (
   jsActions: JSAction[],
-  runFuction: (jsAction: JSAction, from: EventLocation) => void,
+  runFunction: (jsAction: JSAction, from: EventLocation) => void,
   showGutters: boolean,
   onFocusAction: (jsAction: JSAction) => void,
+  isExecutePermitted: boolean,
 ): CodeEditorGutter => {
   const gutter: CodeEditorGutter = {
     getGutterConfig: null,
@@ -116,11 +197,11 @@ export const getJSFunctionLineGutter = (
     getGutterConfig: (code: string, lineNumber: number) => {
       const config = getJSFunctionStartLineFromCode(code, lineNumber);
       const action = find(jsActions, ["name", config?.actionName]);
-      return config && action
+      return config && action && isExecutePermitted
         ? {
             line: config.line,
             element: createGutterMarker(() =>
-              runFuction(action, "JS_OBJECT_GUTTER_RUN_BUTTON"),
+              runFunction(action, "JS_OBJECT_GUTTER_RUN_BUTTON"),
             ),
             isFocusedAction: () => {
               onFocusAction(action);
@@ -144,7 +225,6 @@ export const convertJSActionToDropdownOption = (
   label: JSAction.name,
   value: JSAction.id,
   data: JSAction,
-  hasCustomBadge: !!JSAction.actionConfiguration.isAsync,
 });
 
 export const getActionFromJsCollection = (

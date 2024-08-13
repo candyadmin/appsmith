@@ -3,9 +3,8 @@ import { renderHook } from "@testing-library/react-hooks";
 import { FormProvider, useForm } from "react-hook-form";
 
 import { FormContextProvider } from "../FormContext";
-import useRegisterFieldValidity, {
-  UseRegisterFieldValidityProps,
-} from "./useRegisterFieldValidity";
+import type { UseRegisterFieldValidityProps } from "./useRegisterFieldValidity";
+import useRegisterFieldValidity from "./useRegisterFieldValidity";
 import { FieldType } from "../constants";
 
 const initialFieldState = {
@@ -29,6 +28,8 @@ const initialFieldState = {
 describe("useRegisterFieldInvalid", () => {
   it("updates fieldState and error state with the updated isValid value", () => {
     const mocksetMetaInternalFieldState = jest.fn();
+    // TODO: Fix this the next time the file is edited
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     function Wrapper({ children }: any) {
       const methods = useForm();
 
@@ -91,15 +92,16 @@ describe("useRegisterFieldInvalid", () => {
     });
 
     expect(mocksetMetaInternalFieldState).toBeCalledTimes(2);
-    const cbResult = mocksetMetaInternalFieldState.mock.calls[1][0](
-      initialFieldState,
-    );
+    const cbResult =
+      mocksetMetaInternalFieldState.mock.calls[1][0](initialFieldState);
 
     expect(cbResult).toEqual(expectedUpdatedFieldState);
   });
 
   it("does not trigger meta update if field validity is same", () => {
     const mocksetMetaInternalFieldState = jest.fn();
+    // TODO: Fix this the next time the file is edited
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     function Wrapper({ children }: any) {
       const methods = useForm();
 

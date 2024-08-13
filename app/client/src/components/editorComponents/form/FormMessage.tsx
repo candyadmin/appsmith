@@ -1,8 +1,8 @@
 import React from "react";
 import styled from "styled-components";
 import tinycolor from "tinycolor2";
+import type { Intent } from "constants/DefaultTheme";
 import {
-  Intent,
   BlueprintButtonIntentsCSS,
   IntentIcons,
   IntentColors,
@@ -10,12 +10,12 @@ import {
 } from "constants/DefaultTheme";
 import Button from "components/editorComponents/Button";
 
-export type MessageAction = {
+export interface MessageAction {
   url?: string;
   onClick?: () => void;
   text: string;
   intent: Intent;
-};
+}
 
 const StyledMessage = styled.div`
   & {
@@ -99,11 +99,11 @@ export function ActionButton(props: MessageAction) {
   return null;
 }
 
-export type FormMessageProps = {
+export interface FormMessageProps {
   intent: Intent;
   message: string;
   actions?: MessageAction[];
-};
+}
 
 export function FormMessage(props: FormMessageProps) {
   const actions =
@@ -111,7 +111,6 @@ export function FormMessage(props: FormMessageProps) {
     props.actions.map((action) => (
       <ActionButton key={action.text} {...action} />
     ));
-  const Icon = IntentIcons[props.intent];
   const iconbgcolor = tinycolor(IntentColors[props.intent])
     .lighten()
     .setAlpha(0.2)
@@ -119,7 +118,7 @@ export function FormMessage(props: FormMessageProps) {
   return (
     <StyledMessage>
       <MessageContainer iconbgcolor={iconbgcolor}>
-        <Icon color={IntentColors[props.intent]} height={20} width={20} />
+        {IntentIcons[props.intent]}
         <p>{props.message}</p>
       </MessageContainer>
       {actions && <ActionsContainer>{actions}</ActionsContainer>}

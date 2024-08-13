@@ -1,77 +1,77 @@
-import { importTemplateIntoApplication } from "actions/templateActions";
-import React from "react";
-import { useDispatch, useSelector } from "react-redux";
-import { isFetchingTemplatesSelector } from "selectors/templatesSelectors";
-import styled from "styled-components";
-import { TemplatesContent } from "..";
-import Filters from "../Filters";
-import LoadingScreen from "./LoadingScreen";
-import { Template } from "api/TemplatesApi";
-import TemplateModalHeader from "./Header";
 import {
-  createMessage,
   FETCHING_TEMPLATE_LIST,
-} from "@appsmith/constants/messages";
+  FORKING_TEMPLATE,
+  createMessage,
+} from "ee/constants/messages";
+import type { Template } from "api/TemplatesApi";
+import React from "react";
+import { useSelector } from "react-redux";
+import {
+  isFetchingTemplatesSelector,
+  isImportingTemplateToAppSelector,
+} from "selectors/templatesSelectors";
+import styled from "styled-components";
+import LoadingScreen from "./LoadingScreen";
+import TemplateFilters from "../TemplateFilters";
+import { TemplateContent } from "../TemplateContent";
 
 const Wrapper = styled.div`
   display: flex;
   height: 85vh;
-  overflow: auto;
+  overflow-y: hidden;
 
-  .modal-header {
-    padding-bottom: ${(props) => props.theme.spaces[4]}px;
+  .templates-search {
+    background-color: var(--ads-v2-color-bg);
   }
 `;
 
 const FilterWrapper = styled.div`
   .filter-wrapper {
     width: 200px;
+    margin-right: 10px;
   }
 `;
 
 const ListWrapper = styled.div`
   height: 79vh;
   overflow: auto;
-  &&::-webkit-scrollbar-thumb {
-    background-color: ${(props) => props.theme.colors.modal.scrollbar};
-  }
-  &::-webkit-scrollbar {
-    width: 4px;
-  }
+  width: 100%;
 `;
 
-type TemplateListProps = {
+interface TemplateListProps {
   onTemplateClick: (id: string) => void;
   onClose: () => void;
-};
+}
 
 function TemplateList(props: TemplateListProps) {
-  const dispatch = useDispatch();
   const onForkTemplateClick = (template: Template) => {
-    dispatch(importTemplateIntoApplication(template.id, template.title));
+    props.onTemplateClick(template.id);
   };
+  const isImportingTemplateToApp = useSelector(
+    isImportingTemplateToAppSelector,
+  );
   const isFetchingTemplates = useSelector(isFetchingTemplatesSelector);
 
   if (isFetchingTemplates) {
     return <LoadingScreen text={createMessage(FETCHING_TEMPLATE_LIST)} />;
   }
 
+  if (isImportingTemplateToApp) {
+    return <LoadingScreen text={createMessage(FORKING_TEMPLATE)} />;
+  }
+
   return (
     <Wrapper className="flex flex-col">
-      <TemplateModalHeader
-        className="modal-header"
-        hideBackButton
-        onClose={props.onClose}
-      />
       <div className="flex">
         <FilterWrapper>
-          <Filters />
+          <TemplateFilters />
         </FilterWrapper>
         <ListWrapper>
-          <TemplatesContent
+          <TemplateContent
+            filterWithAllowPageImport
+            isForkingEnabled={false}
             onForkTemplateClick={onForkTemplateClick}
             onTemplateClick={props.onTemplateClick}
-            stickySearchBar
           />
         </ListWrapper>
       </div>

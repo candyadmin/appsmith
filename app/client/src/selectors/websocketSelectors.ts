@@ -1,4 +1,4 @@
-import { AppState } from "@appsmith/reducers";
+import type { AppState } from "ee/reducers";
 
 export const getIsPageLevelSocketConnected = (state: AppState) =>
   state.ui.websocket.pageLevelSocketConnected;

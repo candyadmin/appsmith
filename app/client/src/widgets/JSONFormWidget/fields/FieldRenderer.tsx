@@ -1,16 +1,20 @@
 import React, { useContext, useEffect, useRef } from "react";
-import { ControllerRenderProps, useFormContext } from "react-hook-form";
+import type { ControllerRenderProps } from "react-hook-form";
+import { useFormContext } from "react-hook-form";
 
 import FormContext from "../FormContext";
-import { FIELD_MAP, SchemaItem } from "../constants";
+import type { SchemaItem } from "../constants";
+import { FIELD_MAP } from "../constants";
 
-type FieldRendererProps = {
+interface FieldRendererProps {
   fieldName: ControllerRenderProps["name"];
+  // TODO: Fix this the next time the file is edited
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   options?: Record<string, any>;
   passedDefaultValue?: unknown;
   propertyPath: string;
   schemaItem: SchemaItem;
-};
+}
 
 function FieldRenderer({
   fieldName,

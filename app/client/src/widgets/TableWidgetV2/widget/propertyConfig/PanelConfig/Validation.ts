@@ -1,8 +1,10 @@
-import { ColumnTypes, TableWidgetProps } from "widgets/TableWidgetV2/constants";
+import type { TableWidgetProps } from "widgets/TableWidgetV2/constants";
+import { ColumnTypes } from "widgets/TableWidgetV2/constants";
 import { get } from "lodash";
 import { hideByColumnType } from "../../propertyUtils";
 import commonValidations from "./Validations/Common";
 import numberTypeValidations from "./Validations/Number";
+import dateTypeValidations from "./Validations/Date";
 
 export default {
   sectionName: "Validation",
@@ -14,10 +16,19 @@ export default {
       hideByColumnType(
         props,
         propertyPath,
-        [ColumnTypes.TEXT, ColumnTypes.NUMBER],
+        [
+          ColumnTypes.TEXT,
+          ColumnTypes.NUMBER,
+          ColumnTypes.DATE,
+          ColumnTypes.CURRENCY,
+        ],
         true,
       )
     );
   },
-  children: [...numberTypeValidations, ...commonValidations],
+  children: [
+    ...numberTypeValidations,
+    ...dateTypeValidations,
+    ...commonValidations,
+  ],
 };

@@ -10,21 +10,17 @@ import { Button, Icon, Menu, MenuItem } from "@blueprintjs/core";
 import { Popover2 } from "@blueprintjs/popover2";
 import Webcam from "react-webcam";
 import { useStopwatch } from "react-timer-hook";
-import {
-  FullScreen,
-  FullScreenHandle,
-  useFullScreenHandle,
-} from "react-full-screen";
+import type { FullScreenHandle } from "react-full-screen";
+import { FullScreen, useFullScreenHandle } from "react-full-screen";
 import log from "loglevel";
 import { useIsMobileDevice } from "utils/hooks/useDeviceDetect";
 
+import type { ButtonBorderRadius, ButtonVariant } from "components/constants";
 import {
-  ButtonBorderRadius,
   ButtonBorderRadiusTypes,
-  ButtonVariant,
   ButtonVariantTypes,
 } from "components/constants";
-import { SupportedLayouts } from "reducers/entityReducers/pageListReducer";
+import type { SupportedLayouts } from "reducers/entityReducers/pageListReducer";
 import { getCurrentApplicationLayout } from "selectors/editorSelectors";
 import { useSelector } from "react-redux";
 import { Colors } from "constants/Colors";
@@ -35,24 +31,45 @@ import {
   PLATFORM_OS,
 } from "utils/helpers";
 
-import {
+import type {
   CameraMode,
-  CameraModeTypes,
   DeviceType,
-  DeviceTypes,
   MediaCaptureAction,
-  MediaCaptureActionTypes,
   MediaCaptureStatus,
+} from "../constants";
+import {
+  CameraModeTypes,
+  DeviceTypes,
+  MediaCaptureActionTypes,
   MediaCaptureStatusTypes,
 } from "../constants";
-import { ReactComponent as CameraOfflineIcon } from "assets/icons/widget/camera/camera-offline.svg";
-import { ReactComponent as CameraIcon } from "assets/icons/widget/camera/camera.svg";
-import { ReactComponent as CameraMutedIcon } from "assets/icons/widget/camera/camera-muted.svg";
-import { ReactComponent as MicrophoneIcon } from "assets/icons/widget/camera/microphone.svg";
-import { ReactComponent as MicrophoneMutedIcon } from "assets/icons/widget/camera/microphone-muted.svg";
-import { ReactComponent as FullScreenIcon } from "assets/icons/widget/camera/fullscreen.svg";
-import { ReactComponent as ExitFullScreenIcon } from "assets/icons/widget/camera/exit-fullscreen.svg";
-import { ThemeProp } from "widgets/constants";
+import type { ThemeProp } from "WidgetProvider/constants";
+import { isAirgapped } from "ee/utils/airgapHelpers";
+import { importSvg } from "@appsmith/ads-old";
+import { getVideoConstraints } from "../../utils";
+import { CANVAS_ART_BOARD } from "constants/componentClassNameConstants";
+
+const CameraOfflineIcon = importSvg(
+  async () => import("assets/icons/widget/camera/camera-offline.svg"),
+);
+const CameraIcon = importSvg(
+  async () => import("assets/icons/widget/camera/camera.svg"),
+);
+const CameraMutedIcon = importSvg(
+  async () => import("assets/icons/widget/camera/camera-muted.svg"),
+);
+const MicrophoneIcon = importSvg(
+  async () => import("assets/icons/widget/camera/microphone.svg"),
+);
+const MicrophoneMutedIcon = importSvg(
+  async () => import("assets/icons/widget/camera/microphone-muted.svg"),
+);
+const FullScreenIcon = importSvg(
+  async () => import("assets/icons/widget/camera/fullscreen.svg"),
+);
+const ExitFullScreenIcon = importSvg(
+  async () => import("assets/icons/widget/camera/exit-fullscreen.svg"),
+);
 
 const overlayerMixin = css`
   position: absolute;
@@ -79,6 +96,8 @@ const CameraContainer = styled.div<CameraContainerProps>`
   align-items: center;
   justify-content: center;
   overflow: hidden;
+  height: 100%;
+  width: 100%;
   border-radius: ${({ borderRadius }) => borderRadius};
   box-shadow: ${({ boxShadow }) => boxShadow};
   background: ${({ disabled }) => (disabled ? Colors.GREY_3 : Colors.BLACK)};
@@ -263,12 +282,10 @@ function ControlPanel(props: ControlPanelProps) {
     videoInputs,
     videoMuted,
   } = props;
-  const [isOpenAudioDeviceMenu, setIsOpenAudioDeviceMenu] = useState<boolean>(
-    false,
-  );
-  const [isOpenVideoDeviceMenu, setIsOpenVideoDeviceMenu] = useState<boolean>(
-    false,
-  );
+  const [isOpenAudioDeviceMenu, setIsOpenAudioDeviceMenu] =
+    useState<boolean>(false);
+  const [isOpenVideoDeviceMenu, setIsOpenVideoDeviceMenu] =
+    useState<boolean>(false);
 
   // disable the camera and audio during the video recording
   const isDisableCameraAndAudioMenu = useMemo(() => {
@@ -790,7 +807,9 @@ function DevicePopover(props: DevicePopoverProps) {
           content={<DeviceMenu items={items} onItemClick={onItemClick} />}
           disabled={disabledMenu}
           minimal
-          portalContainer={document.getElementById("art-board") || undefined}
+          portalContainer={
+            document.getElementById(CANVAS_ART_BOARD) || undefined
+          }
         >
           <Button
             disabled={disabledMenu}
@@ -821,6 +840,7 @@ function CameraComponent(props: CameraComponentProps) {
   const {
     borderRadius,
     boxShadow,
+    defaultCamera,
     disabled,
     mirrored,
     mode,
@@ -835,28 +855,25 @@ function CameraComponent(props: CameraComponentProps) {
   const webcamRef = useRef<Webcam>(null);
   const mediaRecorderRef = useRef<MediaRecorder>();
   const videoElementRef = useRef<HTMLVideoElement>(null);
-
   const isMobile = useIsMobileDevice();
   const [audioInputs, setAudioInputs] = useState<MediaDeviceInfo[]>([]);
   const [videoInputs, setVideoInputs] = useState<MediaDeviceInfo[]>([]);
-  const [audioConstraints, setAudioConstraints] = useState<
-    MediaTrackConstraints
-  >({});
-  const [videoConstraints, setVideoConstraints] = useState<
-    MediaTrackConstraints
-  >(
-    isMobile
-      ? {
-          height: 720,
-          width: 1280,
-        }
-      : {},
-  );
+  const [audioConstraints, setAudioConstraints] =
+    useState<MediaTrackConstraints>({});
+  const [videoConstraints, setVideoConstraints] =
+    useState<MediaTrackConstraints>(
+      isMobile
+        ? {
+            height: 720,
+            width: 1280,
+            facingMode: { ideal: defaultCamera },
+          }
+        : {},
+    );
 
   const [image, setImage] = useState<string | null>();
-  const [mediaCaptureStatus, setMediaCaptureStatus] = useState<
-    MediaCaptureStatus
-  >(MediaCaptureStatusTypes.IMAGE_DEFAULT);
+  const [mediaCaptureStatus, setMediaCaptureStatus] =
+    useState<MediaCaptureStatus>(MediaCaptureStatusTypes.IMAGE_DEFAULT);
   const [isPhotoViewerReady, setIsPhotoViewerReady] = useState(false);
   const [isVideoPlayerReady, setIsVideoPlayerReady] = useState(false);
   const [playerDays, setPlayerDays] = useState(0);
@@ -871,6 +888,8 @@ function CameraComponent(props: CameraComponentProps) {
     autoStart: false,
   });
   const fullScreenHandle = useFullScreenHandle();
+
+  const isAirgappedInstance = isAirgapped();
 
   useEffect(() => {
     if (webcamRef.current && webcamRef.current.stream) {
@@ -966,10 +985,13 @@ function CameraComponent(props: CameraComponentProps) {
         });
       }
       if (mediaDeviceInfo.kind === "videoinput") {
-        setVideoConstraints({
-          ...videoConstraints,
-          deviceId: mediaDeviceInfo.deviceId,
-        });
+        const constraints = getVideoConstraints(
+          videoConstraints,
+          isMobile,
+          "", // when switching camera device we don't want to set the default camera ( facing mode )
+          mediaDeviceInfo.deviceId,
+        );
+        setVideoConstraints(constraints);
       }
     },
     [],
@@ -1107,7 +1129,7 @@ function CameraComponent(props: CameraComponentProps) {
         <>
           <CameraOfflineIcon />
           <span className="error-text">{error}</span>
-          {error === "Permission denied" && (
+          {error === "Permission denied" && !isAirgappedInstance && (
             <a
               href="https://help.sprucehealth.com/article/386-changing-permissions-for-video-and-audio-on-your-internet-browser"
               rel="noreferrer"
@@ -1176,6 +1198,7 @@ function CameraComponent(props: CameraComponentProps) {
       borderRadius={borderRadius}
       boxShadow={boxShadow}
       disabled={!!error || disabled}
+      onClick={(event) => event.stopPropagation()}
     >
       <FullScreen handle={fullScreenHandle}>{renderComponent()}</FullScreen>
     </CameraContainer>
@@ -1196,6 +1219,7 @@ export interface CameraComponentProps {
   width: number;
   borderRadius: string;
   boxShadow: string;
+  defaultCamera: string;
 }
 
 export default CameraComponent;

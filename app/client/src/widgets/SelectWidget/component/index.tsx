@@ -1,28 +1,31 @@
 import React from "react";
-import { ComponentProps } from "widgets/BaseComponent";
-import { Alignment, Classes } from "@blueprintjs/core";
-import { DropdownOption } from "../constants";
-import {
+import type { ComponentProps } from "widgets/BaseComponent";
+import type { Alignment } from "@blueprintjs/core";
+import { Classes } from "@blueprintjs/core";
+import type { DropdownOption } from "../constants";
+import type {
   IItemListRendererProps,
   IItemRendererProps,
 } from "@blueprintjs/select";
 import { debounce, findIndex, isEmpty, isNil, isNumber } from "lodash";
 import equal from "fast-deep-equal/es6";
-import "../../../../node_modules/@blueprintjs/select/lib/css/blueprint-select.css";
+import "@blueprintjs/select/lib/css/blueprint-select.css";
 import { FixedSizeList } from "react-window";
-import { TextSize } from "constants/WidgetConstants";
+import type { TextSize } from "constants/WidgetConstants";
 import {
   StyledControlGroup,
   StyledSingleDropDown,
   DropdownStyles,
   DropdownContainer,
   MenuItem,
+  RTLStyleContainer,
 } from "./index.styled";
 import { WidgetContainerDiff } from "widgets/WidgetUtils";
-import { LabelPosition } from "components/constants";
+import type { LabelPosition } from "components/constants";
 import SelectButton from "./SelectButton";
 import { labelMargin } from "../../WidgetUtils";
 import LabelWithTooltip from "widgets/components/LabelWithTooltip";
+import { CANVAS_ART_BOARD } from "constants/componentClassNameConstants";
 
 const DEBOUNCE_TIMEOUT = 800;
 const ITEM_SIZE = 40;
@@ -37,6 +40,8 @@ class SelectComponent extends React.Component<
   SelectComponentProps,
   SelectComponentState
 > {
+  // TODO: Fix this the next time the file is edited
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   listRef: any = React.createRef();
   labelRef = React.createRef<HTMLDivElement>();
   spanRef = React.createRef<HTMLSpanElement>();
@@ -99,13 +104,8 @@ class SelectComponent extends React.Component<
 
     const filter = items.filter(
       (item) =>
-        item.label
-          ?.toString()
-          .toLowerCase()
-          .includes(query.toLowerCase()) ||
-        String(item.value)
-          .toLowerCase()
-          .includes(query.toLowerCase()),
+        item.label?.toString().toLowerCase().includes(query.toLowerCase()) ||
+        String(item.value).toLowerCase().includes(query.toLowerCase()),
     );
     return filter;
   }
@@ -117,13 +117,18 @@ class SelectComponent extends React.Component<
     if (this.state.isOpen) this.togglePopoverVisibility();
   };
 
-  isOptionSelected = (selectedOption: DropdownOption) => {
-    if (this.props.value) return selectedOption.value === this.props.value;
+  isOptionSelected = (currentOption: DropdownOption) => {
+    // if currentOption is null, then return false
+    if (isNil(currentOption)) return false;
+
+    if (this.props.value) return currentOption.value === this.props.value;
+
     const optionIndex = findIndex(this.props.options, (option) => {
-      return option.value === selectedOption.value;
+      return option.value === currentOption.value;
     });
     return optionIndex === this.props.selectedIndex;
   };
+
   onQueryChange = debounce((filterValue: string) => {
     if (equal(filterValue, this.props.filterText)) return;
     this.props.onFilterChange(filterValue);
@@ -202,6 +207,8 @@ class SelectComponent extends React.Component<
     </MenuItem>
   );
   itemListRenderer = (
+    // TODO: Fix this the next time the file is edited
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     props: IItemListRendererProps<any>,
   ): JSX.Element | null => {
     if (!this.state.isOpen) return null;
@@ -223,6 +230,8 @@ class SelectComponent extends React.Component<
   renderList = (
     items: DropdownOption[],
     activeItemIndex: number | null,
+    // TODO: Fix this the next time the file is edited
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     renderItem: (item: any, index: number) => JSX.Element | null,
   ): JSX.Element | null => {
     // Don't scroll if the list is filtered.
@@ -233,14 +242,18 @@ class SelectComponent extends React.Component<
       optionsCount * ITEM_SIZE > MAX_RENDER_MENU_ITEMS_HEIGHT
         ? activeItemIndex * ITEM_SIZE
         : 0;
+    // TODO: Fix this the next time the file is edited
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const RowRenderer = (itemProps: any) => (
       <div key={itemProps.index} style={itemProps.style}>
         {renderItem(items[itemProps.index], itemProps.index)}
       </div>
     );
+
     return (
       <FixedSizeList
         className="menu-virtual-list"
+        direction={this.props.rtl ? "rtl" : "ltr"}
         height={MAX_RENDER_MENU_ITEMS_HEIGHT}
         initialScrollOffset={scrollOffset}
         itemCount={items.length}
@@ -326,7 +339,13 @@ class SelectComponent extends React.Component<
         compactMode={compactMode}
         data-testid="select-container"
         labelPosition={labelPosition}
+        rtl={this.props.rtl}
       >
+        {this.props.rtl ? (
+          <RTLStyleContainer
+            dropdownPopoverContainer={`select-popover-wrapper-${this.props.widgetId}`}
+          />
+        ) : null}
         <DropdownStyles
           accentColor={accentColor}
           borderRadius={borderRadius}
@@ -382,7 +401,7 @@ class SelectComponent extends React.Component<
             onQueryChange={this.onQueryChange}
             popoverProps={{
               portalContainer:
-                document.getElementById("art-board") || undefined,
+                document.getElementById(CANVAS_ART_BOARD) || undefined,
               boundary: "window",
               isOpen: this.state.isOpen,
               minimal: true,
@@ -402,7 +421,7 @@ class SelectComponent extends React.Component<
                   enabled: false,
                 },
               },
-              popoverClassName: `select-popover-wrapper select-popover-width-${this.props.widgetId}`,
+              popoverClassName: `select-popover-wrapper select-popover-width-${this.props.widgetId} select-popover-wrapper-${this.props.widgetId}`,
             }}
             query={this.props.filterText}
             resetOnClose={this.props.resetFilterTextOnClose}
@@ -464,6 +483,7 @@ export interface SelectComponentProps extends ComponentProps {
   onClose?: () => void;
   hideCancelIcon?: boolean;
   resetFilterTextOnClose?: boolean;
+  rtl?: boolean;
 }
 
 export default React.memo(SelectComponent);

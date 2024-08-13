@@ -1,10 +1,14 @@
-import React, { createRef, useEffect, useState } from "react";
 import { Tooltip } from "@blueprintjs/core";
-import { CellWrapper, TooltipContentWrapper } from "../TableStyledWrappers";
-import { CellAlignment, VerticalAlignment } from "../Constants";
-import { ReactComponent as OpenNewTabIcon } from "assets/icons/control/open-new-tab.svg";
+import { importSvg } from "@appsmith/ads-old";
+import React, { createRef, useEffect, useState } from "react";
 import styled from "styled-components";
 import { ColumnTypes } from "widgets/TableWidgetV2/constants";
+import type { CellAlignment, VerticalAlignment } from "../Constants";
+import { CellWrapper, TooltipContentWrapper } from "../TableStyledWrappers";
+
+const OpenNewTabIcon = importSvg(
+  async () => import("assets/icons/control/open-new-tab.svg"),
+);
 
 export const OpenNewTabIconWrapper = styled.div`
   left: 4px;
@@ -28,41 +32,76 @@ export const Content = styled.span`
 `;
 
 const WIDTH_OFFSET = 32;
-const MAX_WIDTH = 300;
+const MAX_WIDTH = 500;
+const TOOLTIP_OPEN_DELAY = 500;
+const MAX_CHARS_ALLOWED_IN_TOOLTIP = 200;
 
-function useToolTip(
-  children: React.ReactNode,
-  tableWidth?: number,
-  title?: string,
-) {
+function useToolTip(children: React.ReactNode, title?: string) {
   const ref = createRef<HTMLDivElement>();
-  const [showTooltip, updateToolTip] = useState(false);
+  const [requiresTooltip, setRequiresTooltip] = useState(false);
 
   useEffect(() => {
-    const element = ref.current?.querySelector("div") as HTMLDivElement;
+    let timeout: ReturnType<typeof setTimeout>;
 
-    if (element && element.offsetWidth < element.scrollWidth) {
-      updateToolTip(true);
-    } else {
-      updateToolTip(false);
-    }
+    const mouseEnterHandler = () => {
+      const element = ref.current?.querySelector("div") as HTMLDivElement;
+
+      /*
+       * Using setTimeout to simulate hoverOpenDelay of the tooltip
+       * during initial render
+       */
+      timeout = setTimeout(() => {
+        if (element && element.offsetWidth < element.scrollWidth) {
+          setRequiresTooltip(true);
+        } else {
+          setRequiresTooltip(false);
+        }
+
+        ref.current?.removeEventListener("mouseenter", mouseEnterHandler);
+        ref.current?.removeEventListener("mouseleave", mouseLeaveHandler);
+      }, TOOLTIP_OPEN_DELAY);
+    };
+
+    const mouseLeaveHandler = () => {
+      clearTimeout(timeout);
+    };
+
+    ref.current?.addEventListener("mouseenter", mouseEnterHandler);
+    ref.current?.addEventListener("mouseleave", mouseLeaveHandler);
+
+    return () => {
+      ref.current?.removeEventListener("mouseenter", mouseEnterHandler);
+      ref.current?.removeEventListener("mouseleave", mouseLeaveHandler);
+      clearTimeout(timeout);
+    };
   }, [children]);
 
-  return showTooltip && children ? (
+  return requiresTooltip && children ? (
     <Tooltip
       autoFocus={false}
+      boundary="viewport"
       content={
-        <TooltipContentWrapper width={(tableWidth || MAX_WIDTH) - WIDTH_OFFSET}>
-          {title}
+        <TooltipContentWrapper width={MAX_WIDTH - WIDTH_OFFSET}>
+          {title && title.length > MAX_CHARS_ALLOWED_IN_TOOLTIP
+            ? `${title.substring(0, MAX_CHARS_ALLOWED_IN_TOOLTIP)} (...)`
+            : title}
         </TooltipContentWrapper>
       }
-      hoverOpenDelay={1000}
-      position="top"
+      defaultIsOpen
+      hoverOpenDelay={TOOLTIP_OPEN_DELAY}
+      position="bottom"
+      usePortal
     >
-      {<Content ref={ref}>{children}</Content>}
+      {
+        <Content className="t--table-cell-tooltip-target" ref={ref}>
+          {children}
+        </Content>
+      }
     </Tooltip>
   ) : (
-    <Content ref={ref}>{children}</Content>
+    <Content className="t--table-cell-tooltip-target" ref={ref}>
+      {children}
+    </Content>
   );
 }
 
@@ -88,7 +127,7 @@ interface Props {
 }
 
 function LinkWrapper(props: Props) {
-  const content = useToolTip(props.children, props.tableWidth, props.title);
+  const content = useToolTip(props.children, props.title);
 
   return (
     <CellWrapper
@@ -120,7 +159,7 @@ function LinkWrapper(props: Props) {
 }
 
 function AutoToolTipComponent(props: Props) {
-  const content = useToolTip(props.children, props.tableWidth, props.title);
+  const content = useToolTip(props.children, props.title);
 
   if (props.columnType === ColumnTypes.URL && props.title) {
     return <LinkWrapper {...props} />;

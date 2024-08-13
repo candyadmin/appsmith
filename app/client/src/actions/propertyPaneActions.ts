@@ -1,5 +1,5 @@
-import { ReduxActionTypes } from "@appsmith/constants/ReduxActionConstants";
-import { SelectedPropertyPanel } from "reducers/uiReducers/propertyPaneReducer";
+import { ReduxActionTypes } from "ee/constants/ReduxActionConstants";
+import type { SelectedPropertyPanel } from "reducers/uiReducers/propertyPaneReducer";
 
 export const updateWidgetName = (widgetId: string, newName: string) => {
   return {
@@ -11,7 +11,10 @@ export const updateWidgetName = (widgetId: string, newName: string) => {
   };
 };
 
-export const bindDataToWidget = (payload: { widgetId: string }) => {
+export const bindDataToWidget = (payload: {
+  widgetId: string;
+  bindingQuery?: string;
+}) => {
   return {
     type: ReduxActionTypes.BIND_DATA_TO_WIDGET,
     payload,
@@ -60,6 +63,13 @@ export const setSelectedPropertyTabIndex = (selectedIndex: number) => {
   };
 };
 
+export const setFocusablePropertyPaneField = (path?: string) => {
+  return {
+    type: ReduxActionTypes.SET_FOCUSABLE_PROPERTY_FIELD,
+    payload: { path },
+  };
+};
+
 export const setSelectedPropertyPanel = (
   path: string | undefined,
   index: number,
@@ -83,6 +93,24 @@ export const unsetSelectedPropertyPanel = (path: string | undefined) => {
 export const setSelectedPropertyPanels = (payload: SelectedPropertyPanel) => {
   return {
     type: ReduxActionTypes.SET_SELECTED_PANELS,
+    payload,
+  };
+};
+
+export const createNewJSCollectionFromActionCreator = (
+  payload: (bindingValue: string) => void,
+) => {
+  return {
+    type: ReduxActionTypes.CREATE_NEW_JS_FROM_ACTION_CREATOR,
+    payload,
+  };
+};
+
+export const createNewQueryFromActionCreator = (
+  payload: (bindingValue: string) => void,
+) => {
+  return {
+    type: ReduxActionTypes.CREATE_NEW_QUERY_FROM_ACTION_CREATOR,
     payload,
   };
 };

@@ -1,55 +1,85 @@
 import React from "react";
-import { connect } from "react-redux";
 import styled from "styled-components";
-import { getTypographyByKey, Text, TextType } from "design-system";
+import { connect, useSelector } from "react-redux";
+import { getTypographyByKey, Text, TextType } from "@appsmith/ads-old";
+import { Icon } from "@appsmith/ads";
 import { setGlobalSearchCategory } from "actions/globalSearchActions";
-import { HELPBAR_PLACEHOLDER } from "@appsmith/constants/messages";
-import AnalyticsUtil from "utils/AnalyticsUtil";
+import { HELPBAR_PLACEHOLDER } from "ee/constants/messages";
+import AnalyticsUtil from "ee/utils/AnalyticsUtil";
 import { modText } from "utils/helpers";
 import { filterCategories, SEARCH_CATEGORY_ID } from "./utils";
+import { protectedModeSelector } from "selectors/gitSyncSelectors";
+import type { AppState } from "ee/reducers";
+import { getIsSideBySideEnabled } from "selectors/ideSelectors";
 
-const StyledHelpBar = styled.div`
-  padding: 0 ${(props) => props.theme.spaces[4]}px;
-  margin: ${(props) => props.theme.spaces[2]}px;
+const StyledHelpBar = styled.button<{ isSideBySideFlagEnabled?: boolean }>`
+  padding: 0 var(--ads-v2-spaces-3);
+  margin: var(--ads-v2-spaces-2);
   .placeholder-text {
     ${getTypographyByKey("p2")}
   }
   display: flex;
   justify-content: space-between;
   align-items: center;
-  color: ${(props) => props.theme.colors.globalSearch.helpBarText};
-  background: ${(props) => props.theme.colors.globalSearch.helpBarBackground};
   height: 28px;
   flex: 1;
-  max-width: 350px;
-  border: 1.5px solid transparent;
-  cursor: default;
+  max-width: 210px;
+  border: 1px solid var(--ads-v2-color-border);
+  border-radius: var(--ads-v2-border-radius);
+  background-color: var(--ads-v2-color-bg);
+  font-family: var(--ads-v2-font-family);
+  font-size: var(--ads-v2-font-size-4);
+  color: var(--ads-v2-color-fg);
   &:hover {
-    border: 1.5px solid ${(props) => props.theme.colors.tertiary.light};
+    border: 1px solid var(--ads-v2-color-border-emphasis-plus);
   }
+
+  &:disabled,
+  &[disabled] {
+    cursor: not-allowed;
+  }
+  ${({ isSideBySideFlagEnabled }) =>
+    isSideBySideFlagEnabled &&
+    `
+      flex-grow: 0;
+      gap: 8px;
+      min-width: fit-content;
+  `}
 `;
 
-const comboText = <>{modText()} K</>;
-
-type Props = {
+interface Props {
   toggleShowModal: () => void;
-};
+  isProtectedMode: boolean;
+}
 
-function HelpBar({ toggleShowModal }: Props) {
+function HelpBar({ isProtectedMode, toggleShowModal }: Props) {
+  const isSideBySideFlagEnabled = useSelector(getIsSideBySideEnabled);
+
   return (
     <StyledHelpBar
       className="t--global-search-modal-trigger"
-      data-cy="global-search-modal-trigger"
+      data-testid="global-search-modal-trigger"
+      disabled={isProtectedMode}
+      isSideBySideFlagEnabled={isSideBySideFlagEnabled}
       onClick={toggleShowModal}
     >
-      <Text type={TextType.P2}>{HELPBAR_PLACEHOLDER()}</Text>
+      {!isSideBySideFlagEnabled && (
+        <Text type={TextType.P2}>{HELPBAR_PLACEHOLDER()}</Text>
+      )}
+      {isSideBySideFlagEnabled && <Icon name={"search-line"} size={"md"} />}
       <Text italic type={TextType.P3}>
-        {comboText}
+        {modText()} K
       </Text>
     </StyledHelpBar>
   );
 }
 
+const mapStateToProps = (state: AppState) => ({
+  isProtectedMode: protectedModeSelector(state),
+});
+
+// TODO: Fix this the next time the file is edited
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const mapDispatchToProps = (dispatch: any) => ({
   toggleShowModal: () => {
     AnalyticsUtil.logEvent("OPEN_OMNIBAR", { source: "NAVBAR_CLICK" });
@@ -59,4 +89,4 @@ const mapDispatchToProps = (dispatch: any) => ({
   },
 });
 
-export default connect(null, mapDispatchToProps)(HelpBar);
+export default connect(mapStateToProps, mapDispatchToProps)(HelpBar);

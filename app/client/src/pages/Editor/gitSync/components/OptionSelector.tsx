@@ -1,15 +1,21 @@
 import React from "react";
-import {
-  Dropdown,
+import type {
   DefaultDropDownValueNodeProps,
   DropdownOption,
+} from "@appsmith/ads-old";
+import {
+  Dropdown,
   DropdownWrapper,
   DropdownContainer as DropdownComponentContainer,
-} from "design-system";
-import { ReactComponent as ChevronDown } from "assets/icons/ads/chevron-down.svg";
+} from "@appsmith/ads-old";
 import { Colors } from "constants/Colors";
 import styled from "styled-components";
 import { Classes as GitSyncClasses } from "pages/Editor/gitSync/constants";
+import { importSvg } from "@appsmith/ads-old";
+
+const ChevronDown = importSvg(
+  async () => import("assets/icons/ads/chevron-down.svg"),
+);
 
 const SelectedValueNodeContainer = styled.div`
   color: ${Colors.CRUSTA};
@@ -39,11 +45,13 @@ const DropdownContainer = styled.div`
   }
 `;
 
-type OptionSelectorProps = {
+interface OptionSelectorProps {
   options: DropdownOption[];
   selected: DropdownOption;
+  // TODO: Fix this the next time the file is edited
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onSelect?: (value?: string, dropdownOption?: any) => void;
-};
+}
 
 function OptionSelector({ onSelect, options, selected }: OptionSelectorProps) {
   return (

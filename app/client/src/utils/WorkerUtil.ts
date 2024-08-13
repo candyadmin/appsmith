@@ -1,8 +1,23 @@
-import { cancelled, delay, put, spawn, take } from "redux-saga/effects";
-import { channel, Channel, buffers } from "redux-saga";
+import { cancelled, delay, put, take } from "redux-saga/effects";
+import type { Channel } from "redux-saga";
+import { channel, buffers } from "redux-saga";
 import { uniqueId } from "lodash";
 import log from "loglevel";
-// import { executeDynamicTriggerRequest } from "sagas/EvaluationsSaga";
+import type { TMessage } from "./MessageUtil";
+import { MessageType, sendMessage } from "./MessageUtil";
+import type { OtlpSpan, SpanAttributes } from "UITelemetry/generateTraces";
+import {
+  endSpan,
+  setAttributesToSpan,
+  startRootSpan,
+} from "UITelemetry/generateTraces";
+import type { WebworkerSpanData } from "UITelemetry/generateWebWorkerTraces";
+import {
+  convertWebworkerSpansToRegularSpans,
+  filterSpanData,
+  newWebWorkerSpanData,
+} from "UITelemetry/generateWebWorkerTraces";
+
 /**
  * Wrap a webworker to provide a synchronous request-response semantic.
  *
@@ -30,12 +45,13 @@ import log from "loglevel";
  * Note: The worker will hold ALL requests, even in case of restarts.
  * If we do not want that behaviour, we should create a new GracefulWorkerService.
  */
-// TODO: Add a compatible listener layer on the worker to complete the framework.
 // TODO: Extract the worker wrapper into a library to be useful to anyone with WebWorkers + redux-saga.
 // TODO: Add support for timeouts on requests and shutdown.
 // TODO: Add a readiness + liveness probes.
 export class GracefulWorkerService {
   // We keep track of all in-flight requests with these channels.
+  // TODO: Fix this the next time the file is edited
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private readonly _channels: Map<string, Channel<any>>;
   // The actual WebWorker
   private _Worker: Worker | undefined;
@@ -46,28 +62,32 @@ export class GracefulWorkerService {
   // If isReady is false, wait on `this._readyChan` to get the pulse signal.
   private _isReady: boolean;
   // Channel to signal all waiters that we're ready. Always use it with `this._isReady`.
+  // TODO: Fix this the next time the file is edited
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private readonly _readyChan: Channel<any>;
 
   private readonly _workerClass: Worker;
 
-  public mainThreadRequestChannel: Channel<any>;
-  public mainThreadResponseChannel: Channel<any>;
+  // TODO: Fix this the next time the file is edited
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private listenerChannel: Channel<TMessage<any>>;
 
   constructor(workerClass: Worker) {
     this.shutdown = this.shutdown.bind(this);
     this.start = this.start.bind(this);
-    this.request = this.request.bind(this);
     this._broker = this._broker.bind(this);
-    this.duplexRequest = this.duplexRequest.bind(this);
-    this.duplexResponseHandler = this.duplexResponseHandler.bind(this);
+    this.request = this.request.bind(this);
+    this.respond = this.respond.bind(this);
+    this.ping = this.ping.bind(this);
 
     // Do not buffer messages on this channel
     this._readyChan = channel(buffers.none());
     this._isReady = false;
+    // TODO: Fix this the next time the file is edited
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     this._channels = new Map<string, Channel<any>>();
     this._workerClass = workerClass;
-    this.mainThreadRequestChannel = channel();
-    this.mainThreadResponseChannel = channel();
+    this.listenerChannel = channel();
   }
 
   /**
@@ -81,10 +101,7 @@ export class GracefulWorkerService {
     // Inform all pending requests that we're good to go!
     this._isReady = true;
     yield put(this._readyChan, true);
-    yield spawn(this.duplexResponseHandler, this.mainThreadResponseChannel);
-    return {
-      mainThreadRequestChannel: this.mainThreadRequestChannel,
-    };
+    return this.listenerChannel;
   }
 
   /**
@@ -104,8 +121,7 @@ export class GracefulWorkerService {
     this._Worker.removeEventListener("message", this._broker);
     this._Worker.terminate();
     this._Worker = undefined;
-    this.mainThreadRequestChannel.close();
-    this.mainThreadResponseChannel.close();
+    this.listenerChannel.close();
   }
 
   /**
@@ -120,6 +136,83 @@ export class GracefulWorkerService {
     return false;
   }
 
+  // TODO: Fix this the next time the file is edited
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  *respond(messageId = "", data = {}): any {
+    if (!messageId) return;
+    yield this.ready(true);
+    if (!this._Worker) return;
+    const messageType = MessageType.RESPONSE;
+
+    sendMessage.call(this._Worker, {
+      body: {
+        data,
+      },
+      messageId,
+      messageType,
+    });
+  }
+
+  // TODO: Fix this the next time the file is edited
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  *ping(data = {}, messageId?: string): any {
+    yield this.ready(true);
+    if (!this._Worker) return;
+    const messageType = MessageType.DEFAULT;
+    sendMessage.call(this._Worker, {
+      body: data,
+      messageId,
+      messageType,
+    });
+  }
+
+  private addChildSpansToRootSpan({
+    endTime,
+    method,
+    rootSpan,
+    startTime,
+    webworkerTelemetry,
+  }: {
+    webworkerTelemetry:
+      | Record<string, WebworkerSpanData | SpanAttributes>
+      | undefined;
+    rootSpan: OtlpSpan | undefined;
+    method: string;
+    startTime: number;
+    endTime: number;
+  }) {
+    if (!webworkerTelemetry) {
+      return;
+    }
+
+    const { transferDataToMainThread } = webworkerTelemetry;
+    if (transferDataToMainThread) {
+      transferDataToMainThread.endTime = Date.now();
+    }
+    /// Add the completeWebworkerComputation span to the root span
+    webworkerTelemetry["completeWebworkerComputation"] = {
+      startTime,
+      endTime,
+      attributes: {},
+      spanName: "completeWebworkerComputation",
+    };
+    //we are attaching the child spans to the root span over here
+    rootSpan &&
+      convertWebworkerSpansToRegularSpans(
+        rootSpan,
+        filterSpanData(webworkerTelemetry),
+      );
+
+    //genereate separate completeWebworkerComputationRoot root span
+    // this span does not contain any child spans, it just captures the webworker computation alone
+    const completeWebworkerComputationRoot = startRootSpan(
+      "completeWebworkerComputationRoot",
+      undefined,
+      startTime,
+    );
+    completeWebworkerComputationRoot?.setAttribute("taskType", method);
+    completeWebworkerComputationRoot?.end(endTime);
+  }
   /**
    * Send a request to the worker for processing.
    * If the worker isn't ready, we wait for it to become ready.
@@ -129,7 +222,9 @@ export class GracefulWorkerService {
    *
    * @returns response from the worker
    */
-  *request(method: string, requestData = {}): any {
+  // TODO: Fix this the next time the file is edited
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  *request(method: string, data = {}): any {
     yield this.ready(true);
     // Impossible case, but helps avoid `?` later in code and makes it clearer.
     if (!this._Worker) return;
@@ -137,122 +232,106 @@ export class GracefulWorkerService {
     /**
      * We create a unique channel to wait for a response of this specific request.
      */
-    const requestId = `${method}__${uniqueId()}`;
+    const messageId = `${method}__${uniqueId()}`;
     const ch = channel();
-    this._channels.set(requestId, ch);
-    const mainThreadStartTime = performance.now();
+    this._channels.set(messageId, ch);
+    const mainThreadStartTime = Date.now();
     let timeTaken;
+    const rootSpan = startRootSpan(method);
+
+    const webworkerTelemetryData: Record<
+      string,
+      WebworkerSpanData | SpanAttributes
+    > = {
+      transferDataToWorkerThread: newWebWorkerSpanData(
+        "transferDataToWorkerThread",
+        {},
+      ),
+      __spanAttributes: {},
+    };
+
+    const body = {
+      method,
+      data,
+      webworkerTelemetry: webworkerTelemetryData,
+    };
+
+    let webworkerTelemetryResponse: Record<
+      string,
+      WebworkerSpanData | SpanAttributes
+    > = {};
 
     try {
-      this._Worker.postMessage({
-        method,
-        requestData,
-        requestId,
+      sendMessage.call(this._Worker, {
+        messageType: MessageType.REQUEST,
+        body: body,
+        messageId,
       });
+
       // The `this._broker` method is listening to events and will pass response to us over this channel.
       const response = yield take(ch);
-      timeTaken = response.timeTaken;
-      const { responseData } = response;
-      return responseData;
+      const { data, endTime, startTime } = response;
+      webworkerTelemetryResponse = data.webworkerTelemetry;
+
+      this.addChildSpansToRootSpan({
+        webworkerTelemetry: webworkerTelemetryResponse,
+        rootSpan,
+        method,
+        startTime,
+        endTime,
+      });
+
+      timeTaken = endTime - startTime;
+      return data;
     } finally {
       // Log perf of main thread and worker
-      const mainThreadEndTime = performance.now();
+      const mainThreadEndTime = Date.now();
       const timeTakenOnMainThread = mainThreadEndTime - mainThreadStartTime;
       if (yield cancelled()) {
-        log.debug(
-          `Main ${method} cancelled in ${timeTakenOnMainThread.toFixed(2)}ms`,
-        );
+        rootSpan?.setAttribute("cancelled", true);
+        log.debug(`Main ${method} cancelled in ${timeTakenOnMainThread}ms`);
       } else {
-        log.debug(`Main ${method} took ${timeTakenOnMainThread.toFixed(2)}ms`);
+        log.debug(`Main ${method} took ${timeTakenOnMainThread}ms`);
       }
 
       if (timeTaken) {
         const transferTime = timeTakenOnMainThread - timeTaken;
         log.debug(` Worker ${method} took ${timeTaken}ms`);
-        log.debug(` Transfer ${method} took ${transferTime.toFixed(2)}ms`);
+        log.debug(` Transfer ${method} took ${transferTime}ms`);
       }
+
+      if (
+        webworkerTelemetryResponse &&
+        webworkerTelemetryResponse.__spanAttributes
+      ) {
+        setAttributesToSpan(
+          rootSpan,
+          webworkerTelemetryResponse.__spanAttributes as SpanAttributes,
+        );
+      }
+
+      endSpan(rootSpan);
       // Cleanup
       ch.close();
-      this._channels.delete(requestId);
+      this._channels.delete(messageId);
     }
   }
 
-  /**
-   * When there needs to be a back and forth between both the threads,
-   * you can use duplex request to avoid closing a channel
-   * */
-  *duplexRequest(method: string, requestData = {}): any {
-    yield this.ready(false);
-    // Impossible case, but helps avoid `?` later in code and makes it clearer.
-    if (!this._Worker) return;
-
-    /**
-     * We create a unique channel to wait for a response of this specific request.
-     */
-    const workerRequestId = `${method}__${uniqueId()}`;
-    // The worker channel is the main channel
-    // where the web worker messages will get posted
-    const isFinishedChannel = channel();
-    this._channels.set(workerRequestId, isFinishedChannel);
-    // And post the first message to the worker
-    this._Worker.postMessage({
-      method,
-      requestData,
-      requestId: workerRequestId,
-    });
-
-    // Returning these channels to the main thread so that they can listen and post on it
-    return {
-      isFinishedChannel: isFinishedChannel,
-    };
-  }
-
-  *duplexResponseHandler(mainThreadResponseChannel: Channel<any>) {
-    if (!this._Worker) return;
-    try {
-      const keepAlive = true;
-      while (keepAlive) {
-        // Wait for the main thread to respond back after a request
-        const response: { finished: unknown; requestId: string } = yield take(
-          mainThreadResponseChannel,
-        );
-        // send response to worker
-        this._Worker.postMessage({
-          ...response,
-          requestId: response.requestId,
-        });
-      }
-    } catch (e) {
-      log.error(e);
-    }
-  }
-
-  private _broker(event: MessageEvent) {
-    if (!event || !event.data) {
-      return;
-    }
-    const { promisified, requestId, responseData, timeTaken } = event.data;
-    const ch = this._channels.get(requestId);
-    // Channel could have been deleted if the request gets cancelled before the WebWorker can respond.
-    // In that case, we want to drop the request.
-    if (promisified) {
-      if (responseData.finished) {
-        if (ch) {
-          ch.put({ requestData: responseData, timeTaken, requestId });
-          this._channels.delete(requestId);
-        }
-      } else {
-        this.mainThreadRequestChannel.put({
-          requestData: responseData,
-          timeTaken,
-          requestId,
-          mainThreadResponseChannel: this.mainThreadResponseChannel,
-        });
+  // TODO: Fix this the next time the file is edited
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private _broker(event: MessageEvent<TMessage<any>>) {
+    if (!event || !event.data) return;
+    const { body, messageType } = event.data;
+    if (messageType === MessageType.RESPONSE) {
+      const { messageId } = event.data;
+      if (!messageId) return;
+      const ch = this._channels.get(messageId);
+      if (ch) {
+        ch.put(body);
+        this._channels.delete(messageId);
       }
     } else {
-      if (ch) {
-        ch.put({ responseData, timeTaken, requestId });
-      }
+      this.listenerChannel.put(event.data);
     }
   }
 }

@@ -1,4 +1,4 @@
-import { CLICK_ON, createMessage } from "@appsmith/constants/messages";
+import { CLICK_ON, createMessage } from "ee/constants/messages";
 import React from "react";
 import styled from "styled-components";
 import { DebugButton } from "./DebugCTA";
@@ -12,10 +12,10 @@ const Container = styled.div`
   color: ${(props) => props.theme.colors.debugger.messageTextColor};
 `;
 
-type DebuggerMessageProps = {
+interface DebuggerMessageProps {
   onClick: () => void;
   secondHalfText: string;
-};
+}
 
 function DebuggerMessage(props: DebuggerMessageProps) {
   return (

@@ -1,28 +1,24 @@
 import React, { useCallback, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import {
-  deleteDatasource,
-  refreshDatasourceStructure,
-} from "actions/datasourceActions";
-import TreeDropdown from "pages/Editor/Explorer/TreeDropdown";
-import ContextMenuTrigger from "../ContextMenuTrigger";
-import { noop } from "lodash";
-import { ContextMenuPopoverModifiers } from "../helpers";
+import { deleteDatasource } from "actions/datasourceActions";
 import { initExplorerEntityNameEdit } from "actions/explorerActions";
 import {
-  CONTEXT_EDIT_NAME,
-  CONTEXT_REFRESH,
+  CONTEXT_RENAME,
   CONTEXT_DELETE,
   CONFIRM_CONTEXT_DELETE,
   createMessage,
-} from "@appsmith/constants/messages";
-import { AppState } from "@appsmith/reducers";
+} from "ee/constants/messages";
+import type { AppState } from "ee/reducers";
+
+import { getDatasource } from "ee/selectors/entitiesSelector";
+import type { TreeDropdownOption } from "pages/Editor/Explorer/ContextMenu";
+import ContextMenu from "pages/Editor/Explorer/ContextMenu";
+import { useFeatureFlag } from "utils/hooks/useFeatureFlag";
+import { FEATURE_FLAG } from "ee/entities/FeatureFlag";
 import {
-  hasDeleteDatasourcePermission,
-  hasManageDatasourcePermission,
-} from "@appsmith/utils/permissionHelpers";
-import { TreeDropdownOption } from "design-system";
-import { getDatasource } from "selectors/entitiesSelector";
+  getHasDeleteDatasourcePermission,
+  getHasManageDatasourcePermission,
+} from "ee/utils/BusinessFeatures/permissionPageHelpers";
 
 export function DataSourceContextMenu(props: {
   datasourceId: string;
@@ -37,9 +33,6 @@ export function DataSourceContextMenu(props: {
     () => dispatch(initExplorerEntityNameEdit(props.entityId)),
     [dispatch, props.entityId],
   );
-  const dispatchRefresh = useCallback(() => {
-    dispatch(refreshDatasourceStructure(props.datasourceId));
-  }, [dispatch, props.datasourceId]);
 
   const [confirmDelete, setConfirmDelete] = useState(false);
 
@@ -47,13 +40,17 @@ export function DataSourceContextMenu(props: {
     getDatasource(state, props.datasourceId),
   );
 
+  const isFeatureEnabled = useFeatureFlag(FEATURE_FLAG.license_gac_enabled);
+
   const datasourcePermissions = datasource?.userPermissions || [];
 
-  const canDeleteDatasource = hasDeleteDatasourcePermission(
+  const canDeleteDatasource = getHasDeleteDatasourcePermission(
+    isFeatureEnabled,
     datasourcePermissions,
   );
 
-  const canManageDatasource = hasManageDatasourcePermission(
+  const canManageDatasource = getHasManageDatasourcePermission(
+    isFeatureEnabled,
     datasourcePermissions,
   );
 
@@ -62,13 +59,7 @@ export function DataSourceContextMenu(props: {
       value: "rename",
       className: "single-select t--datasource-rename",
       onSelect: editDatasourceName,
-      label: createMessage(CONTEXT_EDIT_NAME),
-    },
-    {
-      value: "refresh",
-      className: "single-select t--datasource-refresh",
-      onSelect: dispatchRefresh,
-      label: createMessage(CONTEXT_REFRESH),
+      label: createMessage(CONTEXT_RENAME),
     },
     canDeleteDatasource && {
       confirmDelete: confirmDelete,
@@ -85,15 +76,11 @@ export function DataSourceContextMenu(props: {
   ].filter(Boolean);
 
   return treeOptions.length > 0 ? (
-    <TreeDropdown
+    <ContextMenu
       className={props.className}
-      defaultText=""
-      modifiers={ContextMenuPopoverModifiers}
-      onSelect={noop}
-      optionTree={treeOptions && (treeOptions as TreeDropdownOption[])}
-      selectedValue=""
+      optionTree={treeOptions as TreeDropdownOption[]}
       setConfirmDelete={setConfirmDelete}
-      toggle={<ContextMenuTrigger className="t--context-menu" />}
+      triggerId={"add-datasource"}
     />
   ) : null;
 }

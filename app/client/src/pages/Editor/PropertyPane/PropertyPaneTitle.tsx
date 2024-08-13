@@ -1,36 +1,27 @@
-import React, {
-  memo,
-  ReactElement,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import type { ReactElement } from "react";
+import React, { memo, useCallback, useEffect, useRef, useState } from "react";
+import styled from "styled-components";
 import equal from "fast-deep-equal/es6";
 import { useDispatch, useSelector } from "react-redux";
 import {
   EditableText,
   EditInteractionKind,
   SavingState,
-  TooltipComponent,
-} from "design-system";
+} from "@appsmith/ads-old";
+import type { TooltipPlacement } from "@appsmith/ads";
+import { Tooltip, Button } from "@appsmith/ads";
 import { updateWidgetName } from "actions/propertyPaneActions";
-import { AppState } from "@appsmith/reducers";
+import type { AppState } from "ee/reducers";
 import { getExistingWidgetNames } from "sagas/selectors";
 import { removeSpecialChars } from "utils/helpers";
 import { useToggleEditWidgetName } from "utils/hooks/dragResizeHooks";
 import useInteractionAnalyticsEvent from "utils/hooks/useInteractionAnalyticsEvent";
 
-import { WidgetType } from "constants/WidgetConstants";
-
-import { ReactComponent as BackIcon } from "assets/icons/control/back.svg";
-import { inGuidedTour } from "selectors/onboardingSelectors";
-import { toggleShowDeviationDialog } from "actions/onboardingActions";
-import { ReduxActionTypes } from "@appsmith/constants/ReduxActionConstants";
-import { PopoverPosition } from "@blueprintjs/core/lib/esnext/components/popover/popoverSharedProps";
+import type { WidgetType } from "constants/WidgetConstants";
+import { ReduxActionTypes } from "ee/constants/ReduxActionConstants";
 import { getIsCurrentWidgetRecentlyAdded } from "selectors/propertyPaneSelectors";
 
-type PropertyPaneTitleProps = {
+interface PropertyPaneTitleProps {
   title: string;
   widgetId?: string;
   widgetType?: WidgetType;
@@ -38,11 +29,27 @@ type PropertyPaneTitleProps = {
   onBackClick?: () => void;
   isPanelTitle?: boolean;
   actions: Array<{
+    // TODO: Fix this the next time the file is edited
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     tooltipContent: any;
     icon: ReactElement;
-    tooltipPosition?: PopoverPosition;
+    tooltipPosition?: TooltipPlacement;
   }>;
-};
+}
+
+const StyledEditableContainer = styled.div`
+  max-width: calc(100% - 52px);
+  flex-grow: 1;
+  border-radius: var(--ads-v2-border-radius);
+  border: 1px solid transparent;
+
+  :focus-within {
+    /* outline: var(--ads-v2-border-width-outline) solid
+      var(--ads-v2-color-outline);
+    outline-offset: var(--ads-v2-offset-outline); */
+    border-color: var(--ads-v2-color-border-emphasis-plus);
+  }
+`;
 
 /* eslint-disable react/display-name */
 const PropertyPaneTitle = memo(function PropertyPaneTitle(
@@ -56,12 +63,9 @@ const PropertyPaneTitle = memo(function PropertyPaneTitle(
   const isCurrentWidgetRecentlyAdded = useSelector(
     getIsCurrentWidgetRecentlyAdded,
   );
-  const guidedTourEnabled = useSelector(inGuidedTour);
 
-  const {
-    dispatchInteractionAnalyticsEvent,
-    eventEmitterRef,
-  } = useInteractionAnalyticsEvent<HTMLDivElement>();
+  const { dispatchInteractionAnalyticsEvent, eventEmitterRef } =
+    useInteractionAnalyticsEvent<HTMLDivElement>();
 
   // Pass custom equality check function. Shouldn't be expensive than the render
   // as it is just a small array #perf
@@ -74,11 +78,6 @@ const PropertyPaneTitle = memo(function PropertyPaneTitle(
   const { title, updatePropertyTitle } = props;
   const updateNewTitle = useCallback(
     (value: string) => {
-      if (guidedTourEnabled) {
-        dispatch(toggleShowDeviationDialog(true));
-        return;
-      }
-
       if (
         value &&
         value.trim().length > 0 &&
@@ -87,16 +86,12 @@ const PropertyPaneTitle = memo(function PropertyPaneTitle(
         updatePropertyTitle && updatePropertyTitle(value.trim());
       }
     },
-    [updatePropertyTitle, title, guidedTourEnabled],
+    [updatePropertyTitle, title],
   );
   // End
 
   const updateTitle = useCallback(
     (value?: string) => {
-      if (guidedTourEnabled) {
-        dispatch(toggleShowDeviationDialog(true));
-        return;
-      }
       if (
         value &&
         value.trim().length > 0 &&
@@ -112,14 +107,7 @@ const PropertyPaneTitle = memo(function PropertyPaneTitle(
         toggleEditWidgetName(props.widgetId, false);
       }
     },
-    [
-      dispatch,
-      widgets,
-      setName,
-      props.widgetId,
-      props.title,
-      guidedTourEnabled,
-    ],
+    [dispatch, widgets, setName, props.widgetId, props.title],
   );
 
   useEffect(() => {
@@ -177,18 +165,18 @@ const PropertyPaneTitle = memo(function PropertyPaneTitle(
     >
       {/* BACK BUTTON */}
       {props.isPanelTitle && (
-        <button
-          className="p-1 hover:bg-warmGray-100 group t--property-pane-back-btn"
+        <Button
+          data-testid="t--property-pane-back-btn"
+          isIconButton
+          kind="tertiary"
           onClick={props.onBackClick}
-        >
-          <BackIcon className="w-4 h-4 text-gray-500" />
-        </button>
+          startIcon="back-control"
+        />
       )}
       {/* EDITABLE TEXT */}
-      <div
+      <StyledEditableContainer
         className="flex-grow"
         onKeyDown={handleTabKeyDown}
-        style={{ maxWidth: `calc(100% - 52px)` }}
       >
         <EditableText
           className="flex-grow text-lg font-semibold t--property-pane-title"
@@ -206,19 +194,18 @@ const PropertyPaneTitle = memo(function PropertyPaneTitle(
           valueTransform={!props.isPanelTitle ? removeSpecialChars : undefined}
           wrapperRef={containerRef}
         />
-      </div>
+      </StyledEditableContainer>
 
       {/* ACTIONS */}
       <div className="flex items-center space-x-1">
         {props.actions.map((value, index) => (
-          <TooltipComponent
+          <Tooltip
             content={value.tooltipContent}
-            hoverOpenDelay={200}
             key={index}
-            position={value.tooltipPosition}
+            placement={value.tooltipPosition}
           >
             {value.icon}
-          </TooltipComponent>
+          </Tooltip>
         ))}
       </div>
     </div>
