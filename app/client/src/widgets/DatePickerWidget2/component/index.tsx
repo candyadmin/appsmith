@@ -1,20 +1,22 @@
 import React from "react";
 import styled from "styled-components";
 import { IntentColors } from "constants/DefaultTheme";
-import { ControlGroup, Classes, IRef, Alignment } from "@blueprintjs/core";
-import { ComponentProps } from "widgets/BaseComponent";
+import type { IRef, Alignment } from "@blueprintjs/core";
+import { ControlGroup, Classes } from "@blueprintjs/core";
+import type { ComponentProps } from "widgets/BaseComponent";
 import { DateInput } from "@blueprintjs/datetime";
-import moment from "moment-timezone";
-import "../../../../node_modules/@blueprintjs/datetime/lib/css/blueprint-datetime.css";
-import { DatePickerType, TimePrecision } from "../constants";
-import { TextSize } from "constants/WidgetConstants";
+import moment from "moment";
+import "@blueprintjs/datetime/lib/css/blueprint-datetime.css";
+import type { DatePickerType } from "../constants";
+import { TimePrecision } from "../constants";
+import type { TextSize } from "constants/WidgetConstants";
 import { Colors } from "constants/Colors";
 import { ISO_DATE_FORMAT } from "constants/WidgetValidation";
 import ErrorTooltip from "components/editorComponents/ErrorTooltip";
 import {
   createMessage,
   DATE_WIDGET_DEFAULT_VALIDATION_ERROR,
-} from "@appsmith/constants/messages";
+} from "ee/constants/messages";
 import { LabelPosition } from "components/constants";
 import { parseDate } from "./utils";
 import { lightenColor, PopoverStyles } from "widgets/WidgetUtils";
@@ -23,7 +25,20 @@ import LabelWithTooltip, {
 } from "widgets/components/LabelWithTooltip";
 
 const DATEPICKER_POPUP_CLASSNAME = "datepickerwidget-popup";
+import { required } from "utils/validation/common";
+import { CANVAS_ART_BOARD } from "constants/componentClassNameConstants";
 
+function hasFulfilledRequiredCondition(
+  isRequired: boolean | undefined,
+  // TODO: Fix this the next time the file is edited
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  value: any,
+) {
+  // if the required condition is not enabled then it has fulfilled
+  if (!isRequired) return true;
+
+  return !required(value);
+}
 const StyledControlGroup = styled(ControlGroup)<{
   isValid: boolean;
   compactMode: boolean;
@@ -36,17 +51,17 @@ const StyledControlGroup = styled(ControlGroup)<{
 
   /**
     When the label is on the left it is not center aligned
-    here set height to auto and not 100% because the input 
+    here set height to auto and not 100% because the input
     has fixed height and stretch the container.
   */
     ${({ labelPosition }) => {
-      if (labelPosition === LabelPosition.Left) {
-        return `
+    if (labelPosition === LabelPosition.Left) {
+      return `
       height: auto !important;
       align-items: stretch;
       `;
-      }
-    }}
+    }
+  }}
 
   &&& {
     .${Classes.INPUT} {
@@ -167,11 +182,21 @@ class DatePickerComponent extends React.Component<
     return _date.isValid() ? _date.toDate() : undefined;
   };
 
+  getConditionalPopoverProps = (props: DatePickerComponentProps) => {
+    if (typeof props.isPopoverOpen === "boolean") {
+      return {
+        isOpen: props.isPopoverOpen,
+      };
+    }
+    return {};
+  };
+
   render() {
     const {
       compactMode,
       isDisabled,
       isLoading,
+      isRequired,
       labelAlignment,
       labelPosition,
       labelStyle,
@@ -181,6 +206,7 @@ class DatePickerComponent extends React.Component<
       labelTooltip,
       labelWidth,
     } = this.props;
+
     const now = moment();
     const year = now.get("year");
     const minDate = this.props.minDate
@@ -202,6 +228,11 @@ class DatePickerComponent extends React.Component<
       isValid && this.state.selectedDate
         ? new Date(this.state.selectedDate)
         : null;
+
+    const hasFulfilledRequired = hasFulfilledRequiredCondition(
+      isRequired,
+      value,
+    );
 
     const getInitialMonth = () => {
       // None
@@ -300,8 +331,10 @@ class DatePickerComponent extends React.Component<
         compactMode={this.props.compactMode}
         data-testid="datepicker-container"
         fill
-        isValid={isValid}
+        isValid={isValid && hasFulfilledRequired}
         labelPosition={this.props.labelPosition}
+        // TODO: Fix this the next time the file is edited
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         onClick={(e: any) => {
           e.stopPropagation();
         }}
@@ -353,10 +386,18 @@ class DatePickerComponent extends React.Component<
               placeholder={"Select Date"}
               popoverProps={{
                 portalContainer:
-                  document.getElementById("art-board") || undefined,
+                  document.getElementById(CANVAS_ART_BOARD) || undefined,
                 usePortal: !this.props.withoutPortal,
                 canEscapeKeyClose: true,
                 portalClassName: `${DATEPICKER_POPUP_CLASSNAME}-${this.props.widgetId}`,
+                onClose: this.props.onPopoverClosed,
+                /*
+                  Conditional popover props are the popover props that should not be sent to
+                  DateInput in any way if they are not applicable.
+                  Here isOpen prop if sent in any way will interfere with the normal functionality
+                  of Date Picker widget's popover but is required for Table Widget's date cell popover
+                */
+                ...this.getConditionalPopoverProps(this.props),
               }}
               shortcuts={this.props.shortcuts}
               showActionsBar
@@ -403,6 +444,9 @@ class DatePickerComponent extends React.Component<
       ) {
         isValid = false;
       }
+    }
+    if (!isValid && this.props?.onDateOutOfRange) {
+      this.props.onDateOutOfRange();
     }
     return isValid;
   };
@@ -474,6 +518,10 @@ interface DatePickerComponentProps extends ComponentProps {
   labelTooltip?: string;
   onFocus?: () => void;
   onBlur?: () => void;
+  onPopoverClosed?: (e: unknown) => void;
+  isPopoverOpen?: boolean;
+  onDateOutOfRange?: () => void;
+  isRequired?: boolean;
 }
 
 interface DatePickerComponentState {

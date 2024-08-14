@@ -1,16 +1,22 @@
 import { createImmerReducer } from "utils/ReducerUtils";
-import {
-  ReduxActionTypes,
+import type {
   UpdateCanvasPayload,
   ReduxAction,
-} from "@appsmith/constants/ReduxActionConstants";
-import { WidgetProps } from "widgets/BaseWidget";
+} from "ee/constants/ReduxActionConstants";
+import { ReduxActionTypes } from "ee/constants/ReduxActionConstants";
+import type { WidgetProps } from "widgets/BaseWidget";
 import { uniq, get, set } from "lodash";
-import { Diff, diff } from "deep-diff";
+import type { Diff } from "deep-diff";
+import { diff } from "deep-diff";
+import {
+  getCanvasBottomRow,
+  getCanvasWidgetHeightsToUpdate,
+} from "utils/WidgetSizeUtils";
+import { klona } from "klona";
 
 /* This type is an object whose keys are widgetIds and values are arrays with property paths
-and property values 
-For example: 
+and property values
+For example:
 { "xyz123": [{ propertyPath: "bottomRow", propertyValue: 20 }] }
 */
 export type UpdateWidgetsPayload = Record<
@@ -21,7 +27,7 @@ export type UpdateWidgetsPayload = Record<
   }>
 >;
 
-const initialState: CanvasWidgetsReduxState = {};
+export const initialState: CanvasWidgetsReduxState = {};
 
 export type FlattenedWidgetProps<orType = never> =
   | (WidgetProps & {
@@ -54,7 +60,14 @@ const canvasWidgetsReducer = createImmerReducer(initialState, {
     state: CanvasWidgetsReduxState,
     action: ReduxAction<UpdateCanvasPayload>,
   ) => {
-    return action.payload.widgets;
+    const { widgets } = action.payload;
+    for (const [widgetId, widgetProps] of Object.entries(widgets)) {
+      if (widgetProps.type === "CANVAS_WIDGET") {
+        const bottomRow = getCanvasBottomRow(widgetId, widgets);
+        widgets[widgetId].bottomRow = bottomRow;
+      }
+    }
+    return widgets;
   },
   [ReduxActionTypes.UPDATE_LAYOUT]: (
     state: CanvasWidgetsReduxState,
@@ -81,14 +94,27 @@ const canvasWidgetsReducer = createImmerReducer(initialState, {
         delete state[widgetId];
       }
     }
+
+    const canvasWidgetHeightsToUpdate: Record<string, number> =
+      getCanvasWidgetHeightsToUpdate(listOfUpdatedWidgets, state);
+
+    for (const widgetId in canvasWidgetHeightsToUpdate) {
+      state[widgetId] = {
+        ...state[widgetId],
+        bottomRow: canvasWidgetHeightsToUpdate[widgetId],
+      };
+    }
   },
   [ReduxActionTypes.UPDATE_MULTIPLE_WIDGET_PROPERTIES]: (
     state: CanvasWidgetsReduxState,
-    action: ReduxAction<UpdateWidgetsPayload>,
+    action: ReduxAction<{
+      widgetsToUpdate: UpdateWidgetsPayload;
+      shouldEval: boolean;
+    }>,
   ) => {
     // For each widget whose properties we would like to update
     for (const [widgetId, propertyPathsToUpdate] of Object.entries(
-      action.payload,
+      action.payload.widgetsToUpdate,
     )) {
       // Iterate through each property to update in `widgetId`
       propertyPathsToUpdate.forEach(({ propertyPath, propertyValue }) => {
@@ -101,6 +127,18 @@ const canvasWidgetsReducer = createImmerReducer(initialState, {
           set(state, path, propertyValue);
       });
     }
+
+    const canvasWidgetHeightsToUpdate: Record<string, number> =
+      getCanvasWidgetHeightsToUpdate(
+        Object.keys(action.payload.widgetsToUpdate),
+        state,
+      );
+    for (const widgetId in canvasWidgetHeightsToUpdate) {
+      state[widgetId].bottomRow = canvasWidgetHeightsToUpdate[widgetId];
+    }
+  },
+  [ReduxActionTypes.RESET_EDITOR_REQUEST]: () => {
+    return klona(initialState);
   },
 });
 

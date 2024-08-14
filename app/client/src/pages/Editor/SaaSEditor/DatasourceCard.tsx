@@ -1,22 +1,24 @@
-import { Datasource } from "entities/Datasource";
+import type { Datasource } from "entities/Datasource";
 import { isStoredDatasource } from "entities/Action";
 import React from "react";
-import { isNil } from "lodash";
+import { isEmpty } from "lodash";
 import { useSelector } from "react-redux";
 import { Colors } from "constants/Colors";
 import { useParams } from "react-router";
 
 import {
-  getActionsForCurrentPage,
+  getCurrentActions,
   getPluginImages,
-} from "selectors/entitiesSelector";
+} from "ee/selectors/entitiesSelector";
 import styled from "styled-components";
-import { AppState } from "@appsmith/reducers";
+import type { AppState } from "ee/reducers";
 import history from "utils/history";
 
 import RenderDatasourceInformation from "pages/Editor/DataSourceEditor/DatasourceSection";
 import { BaseButton } from "components/designSystems/appsmith/BaseButton";
-import { saasEditorDatasourceIdURL } from "RouteBuilder";
+import { saasEditorDatasourceIdURL } from "ee/RouteBuilder";
+import { getAssetUrl } from "ee/utils/airgapHelpers";
+import { Button } from "@appsmith/ads";
 
 const Wrapper = styled.div`
   border: 2px solid #d6d6d6;
@@ -41,11 +43,11 @@ const DatasourceImage = styled.img`
   width: auto;
 `;
 
-const EditDatasourceButton = styled(BaseButton)`
+const EditDatasourceButton = styled(Button)`
   &&&& {
     height: 36px;
     max-width: 160px;
-    border: 1px solid ${Colors.GEYSER_LIGHT};
+    border: 1px solid var(--ads-v2-color-border);
     width: auto;
   }
 `;
@@ -79,10 +81,10 @@ const ButtonsWrapper = styled.div`
   gap: 10px;
 `;
 
-type DatasourceCardProps = {
+interface DatasourceCardProps {
   datasource: Datasource;
   onCreate: (datasource: Datasource) => void;
-};
+}
 
 // TODO: This is largely a quick copy pasta and edit of QueryEditor/DatasourceCard.tsx
 // When we move Google Sheets over to regular oauth2 integrations, we will need to refactor this.
@@ -96,13 +98,15 @@ function DatasourceCard(props: DatasourceCardProps) {
   const datasourceFormConfigs = useSelector(
     (state: AppState) => state.entities.plugins.formConfigs,
   );
-  const queryActions = useSelector(getActionsForCurrentPage);
+  const queryActions = useSelector(getCurrentActions);
   const queriesWithThisDatasource = queryActions.filter(
     (action) =>
       isStoredDatasource(action.config.datasource) &&
       action.config.datasource.id === datasource.id,
   ).length;
 
+  // TODO: Fix this the next time the file is edited
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const currentFormConfig: Array<any> =
     datasourceFormConfigs[datasource?.pluginId ?? ""];
   const QUERY = queriesWithThisDatasource > 1 ? "APIs" : "API";
@@ -124,7 +128,7 @@ function DatasourceCard(props: DatasourceCardProps) {
             <DatasourceImage
               alt="Datasource"
               className="dataSourceImage"
-              src={pluginImages[datasource.pluginId]}
+              src={getAssetUrl(pluginImages[datasource.pluginId])}
             />
             <DatasourceName>{datasource.name}</DatasourceName>
           </DatasourceNameWrapper>
@@ -137,10 +141,11 @@ function DatasourceCard(props: DatasourceCardProps) {
         <ButtonsWrapper>
           <EditDatasourceButton
             className="t--edit-datasource"
-            icon={"edit"}
             onClick={editDatasource}
-            text="Edit Datasource"
-          />
+            startIcon={"pencil-line"}
+          >
+            Edit Datasource
+          </EditDatasourceButton>
           <ActionButton
             buttonStyle="PRIMARY"
             className="t--create-api"
@@ -150,14 +155,13 @@ function DatasourceCard(props: DatasourceCardProps) {
           />
         </ButtonsWrapper>
       </DatasourceCardHeader>
-      {!isNil(currentFormConfig) ? (
+      {!isEmpty(currentFormConfig) ? (
         <RenderDatasourceInformation
           config={currentFormConfig[0]}
           datasource={datasource}
+          showOnlyCurrentEnv
         />
-      ) : (
-        undefined
-      )}
+      ) : undefined}
     </Wrapper>
   );
 }

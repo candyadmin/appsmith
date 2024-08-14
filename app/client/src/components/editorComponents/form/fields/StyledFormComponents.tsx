@@ -1,7 +1,6 @@
 import React from "react";
 import styled from "styled-components";
-import { Colors } from "constants/Colors";
-import { ControlProps } from "components/formControls/BaseControl";
+import type { ControlProps } from "components/formControls/BaseControl";
 
 //Styled help text, intended to be used with Form Fields
 export const StyledFormInfo = styled.span<{ config?: ControlProps }>`
@@ -12,7 +11,7 @@ export const StyledFormInfo = styled.span<{ config?: ControlProps }>`
       ? "block;"
       : "inline-block;"}
   font-weight: normal;
-  color: ${Colors.DOVE_GRAY};
+  color: var(--ads-v2-color-fg-muted);
   font-size: 12px;
   margin-left: ${(props) =>
     //SWITCH and CHECKBOX display label text and form input aligned side by side
@@ -21,6 +20,12 @@ export const StyledFormInfo = styled.span<{ config?: ControlProps }>`
       ? "1px"
       : "0px"};
   margin-top: 5px;
+  margin-bottom: ${(props) =>
+    //SWITCH and CHECKBOX display label text and form input aligned side by side but not for others
+    props?.config?.controlType !== "SWITCH" &&
+    props?.config?.controlType !== "CHECKBOX"
+      ? "5px"
+      : "0px"};
   line-height: 16px;
 `;
 
@@ -32,13 +37,13 @@ display: ${(props) =>
     ? "block;"
     : "inline;"}
 font-weight: normal;
-color: ${Colors.DOVE_GRAY};
+color: var(--ads-v2-color-fg-muted);
 font-size: 12px;
 `;
 
 //Styled help text, intended to be used with Form Fields
 const FormInputHelperText = styled.p<{ addMarginTop?: string }>`
-  color: ${Colors.GREY_7};
+  color: var(--ads-v2-color-fg-muted);
   font-style: normal;
   font-weight: normal;
   font-size: 12px;
@@ -94,30 +99,31 @@ const FormInputSwitchToJsonButton = styled.button`
 //Styled form label tag, intended to be used with Form Fields
 const StyledFormLabel = styled.label<{
   config?: ControlProps;
+  // TODO: Fix this the next time the file is edited
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   extraStyles?: any;
 }>`
   display: inline-block;
-  // TODO: replace condition with props.config?.dataType === "TOGGLE" 
+  // TODO: replace condition with props.config?.dataType === "TOGGLE"
   // required for large texts in CHECKBOX and SWITCH
   width: ${(props) => props.config?.customStyles?.width || "auto;"}
   min-width: ${(props) =>
     props.extraStyles?.minWidth
       ? props.extraStyles?.minWidth
       : props.config?.controlType === "SWITCH" ||
-        props.config?.controlType === "CHECKBOX"
-      ? "auto;"
-      : "20vw;"} 
+          props.config?.controlType === "CHECKBOX"
+        ? "auto;"
+        : "270px;"}
   font-weight: 400;
   font-size: 14px;
   line-height: 16px;
   letter-spacing: 0.02em;
-  color: ${Colors.CHARCOAL};
   margin-bottom: ${(props) =>
     props.extraStyles?.marginBottom
       ? props.extraStyles?.marginBottom
       : props.config?.controlType === "CHECKBOX"
-      ? "0;"
-      : "8px;"} 
+        ? "0;"
+        : "4px;"};
   &:first-child {
     margin-left: 0;
   }
@@ -128,9 +134,10 @@ const StyledFormLabel = styled.label<{
     margin-bottom: 0;
     display: flex;
     align-items: center;
+    /* color: var(--ads-v2-color-fg); */
   }
   .label-icon-wrapper svg path {
-    fill: #939090;
+    fill: var(--ads-v2-color-fg);;
   }
 `;
 
@@ -143,6 +150,8 @@ const FormEncrytedSection = styled.div`
 interface FormLabelProps {
   config?: ControlProps;
   children: JSX.Element | React.ReactNode;
+  // TODO: Fix this the next time the file is edited
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   extraStyles?: any;
 }
 

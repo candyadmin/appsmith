@@ -1,59 +1,51 @@
 import React from "react";
 import styled from "styled-components";
-import FlagBadge from "components/utils/FlagBadge";
-import { JSCollection } from "entities/JSCollection";
-import {
-  Button,
-  Dropdown,
-  DropdownOnSelect,
-  DropdownContainer,
-  Size,
-  StyledButton,
-  TooltipComponent as Tooltip,
-} from "design-system";
-import {
-  createMessage,
-  NO_JS_FUNCTION_TO_RUN,
-} from "@appsmith/constants/messages";
-import { JSActionDropdownOption } from "./utils";
+import type { JSCollection } from "entities/JSCollection";
+import type { SelectProps } from "@appsmith/ads";
+import { Button, Option, Select, Tooltip, Text } from "@appsmith/ads";
+import { createMessage, NO_JS_FUNCTION_TO_RUN } from "ee/constants/messages";
+import type { JSActionDropdownOption } from "./utils";
 import { RUN_BUTTON_DEFAULTS, testLocators } from "./constants";
 
-type Props = {
+interface Props {
   disabled: boolean;
   isLoading: boolean;
   jsCollection: JSCollection;
   onButtonClick: (event: React.MouseEvent<HTMLElement, MouseEvent>) => void;
-  onSelect: DropdownOnSelect;
+  onSelect: SelectProps["onSelect"];
   options: JSActionDropdownOption[];
   selected: JSActionDropdownOption;
   showTooltip: boolean;
-};
+}
 
-export type DropdownWithCTAWrapperProps = {
+export interface DropdownWithCTAWrapperProps {
   isDisabled: boolean;
-};
-const disabledStyles = `
-opacity: 0.5;
-pointer-events:none;
-`;
+}
 
 const DropdownWithCTAWrapper = styled.div<DropdownWithCTAWrapperProps>`
   display: flex;
+  gap: var(--ads-v2-spaces-3);
 
-  ${StyledButton} {
-    ${(props) =>
-      props.isDisabled &&
-      `
-    ${disabledStyles}
-    `}
+  &&&&& .function-select-dropdown {
+    width: 230px;
   }
-  ${DropdownContainer} {
-    ${(props) =>
-      props.isDisabled &&
-      `
-      ${disabledStyles}
-    `}
-  }
+`;
+
+const OptionWrapper = styled.div`
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+`;
+
+const OptionLabelWrapper = styled.div<{ fullSize?: boolean }>`
+  width: ${(props) => (props?.fullSize ? "100%" : "80%")};
+  overflow: hidden;
+`;
+
+const OptionLabel = styled(Text)`
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
 `;
 
 export function JSFunctionRun({
@@ -68,34 +60,57 @@ export function JSFunctionRun({
 }: Props) {
   return (
     <DropdownWithCTAWrapper isDisabled={disabled}>
-      <Dropdown
-        customBadge={<FlagBadge name="Async" />}
-        cypressSelector="function-select-dropdown"
-        height={RUN_BUTTON_DEFAULTS.HEIGHT}
+      <Select
+        className="function-select-dropdown"
+        isDisabled={disabled}
         onSelect={onSelect}
-        options={options}
-        selected={selected}
-        selectedHighlightBg={RUN_BUTTON_DEFAULTS.DROPDOWN_HIGHLIGHT_BG}
-        showLabelOnly
-        truncateOption
-        width="232px"
-      />
-
+        size="md"
+        value={
+          selected.label && {
+            key: selected.label,
+            label: (
+              <OptionLabelWrapper fullSize>
+                <OptionLabel renderAs="p">{selected.label}</OptionLabel>
+              </OptionLabelWrapper>
+            ),
+          }
+        }
+        virtual={false}
+      >
+        {options.map((option) => (
+          <Option key={option.value}>
+            <OptionWrapper>
+              <Tooltip
+                content={option.label}
+                // Here, 18 is the maximum charecter length because the width of this menu does not change
+                isDisabled={(option.label?.length || 0) < 18}
+                placement="right"
+              >
+                <OptionLabelWrapper>
+                  <OptionLabel renderAs="p">{option.label}</OptionLabel>
+                </OptionLabelWrapper>
+              </Tooltip>
+            </OptionWrapper>
+          </Option>
+        ))}
+      </Select>
       <Tooltip
         content={createMessage(NO_JS_FUNCTION_TO_RUN, jsCollection.name)}
-        disabled={!showTooltip}
-        hoverOpenDelay={50}
+        isDisabled={!showTooltip}
+        placement="topRight"
       >
-        <Button
-          className={testLocators.runJSAction}
-          height={RUN_BUTTON_DEFAULTS.HEIGHT}
-          isLoading={isLoading}
-          onClick={onButtonClick}
-          size={Size.medium}
-          tag="button"
-          text={RUN_BUTTON_DEFAULTS.CTA_TEXT}
-          type="button"
-        />
+        {/* this span exists to make the disabled button visible to the tooltip */}
+        <span>
+          <Button
+            className={testLocators.runJSAction}
+            isDisabled={disabled}
+            isLoading={isLoading}
+            onClick={onButtonClick}
+            size="md"
+          >
+            {RUN_BUTTON_DEFAULTS.CTA_TEXT}
+          </Button>
+        </span>
       </Tooltip>
     </DropdownWithCTAWrapper>
   );

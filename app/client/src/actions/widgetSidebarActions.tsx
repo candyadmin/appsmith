@@ -1,8 +1,8 @@
 import {
   ReduxActionTypes,
   ReduxActionErrorTypes,
-} from "@appsmith/constants/ReduxActionConstants";
-import { WidgetCardProps } from "widgets/BaseWidget";
+} from "ee/constants/ReduxActionConstants";
+import type { WidgetCardProps } from "widgets/BaseWidget";
 
 export const fetchWidgetCards = () => {
   return {
@@ -10,6 +10,8 @@ export const fetchWidgetCards = () => {
   };
 };
 
+// TODO: Fix this the next time the file is edited
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const errorFetchingWidgetCards = (error: any) => {
   return {
     type: ReduxActionErrorTypes.FETCH_WIDGET_CARDS_ERROR,

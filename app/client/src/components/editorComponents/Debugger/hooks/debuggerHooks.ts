@@ -1,29 +1,37 @@
 import { useCallback, useEffect, useState } from "react";
 import { useSelector } from "react-redux";
 import { useParams } from "react-router";
-import { ENTITY_TYPE, Log } from "entities/AppsmithConsole";
-import { AppState } from "@appsmith/reducers";
+import type { Log } from "entities/AppsmithConsole";
+import { ENTITY_TYPE } from "ee/entities/AppsmithConsole/utils";
+import type { AppState } from "ee/reducers";
 import { getWidget } from "sagas/selectors";
 import {
   getCurrentApplicationId,
-  getCurrentPageId,
+  getCurrentBasePageId,
 } from "selectors/editorSelectors";
-import { getAction, getPlugins } from "selectors/entitiesSelector";
+import {
+  getAction,
+  getActionByBaseId,
+  getPlugins,
+} from "ee/selectors/entitiesSelector";
 import { onApiEditor, onCanvas, onQueryEditor } from "../helpers";
 import { getLastSelectedWidget } from "selectors/ui";
-import { getDataTree } from "selectors/dataTreeSelectors";
+import { getConfigTree, getDataTree } from "selectors/dataTreeSelectors";
 import { useNavigateToWidget } from "pages/Editor/Explorer/Widgets/useNavigateToWidget";
 import { getActionConfig } from "pages/Editor/Explorer/Actions/helpers";
 import {
   isAction,
   isJSAction,
   isWidget,
-} from "workers/Evaluation/evaluationUtils";
+} from "ee/workers/Evaluation/evaluationUtils";
 import history, { NavigationMethod } from "utils/history";
-import { jsCollectionIdURL } from "RouteBuilder";
+import { jsCollectionIdURL } from "ee/RouteBuilder";
 import store from "store";
 import { PluginType } from "entities/Action";
+import type { WidgetEntity } from "ee/entities/DataTree/types";
 
+// TODO: Fix this the next time the file is edited
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const useFilteredLogs = (query: string, filter?: any) => {
   let logs = useSelector((state: AppState) => state.ui.debugger.logs);
 
@@ -44,9 +52,8 @@ export const useFilteredLogs = (query: string, filter?: any) => {
         return true;
       if (
         !!log.state &&
-        JSON.stringify(log.state)
-          .toUpperCase()
-          .indexOf(query.toUpperCase()) !== -1
+        JSON.stringify(log.state).toUpperCase().indexOf(query.toUpperCase()) !==
+          -1
       )
         return true;
     });
@@ -89,12 +96,14 @@ export const usePagination = (data: Log[], itemsPerPage = 50) => {
 };
 
 export const useSelectedEntity = () => {
+  // TODO: Fix this the next time the file is edited
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const params: any = useParams();
   const action = useSelector((state: AppState) => {
     if (onApiEditor() || onQueryEditor()) {
-      const id = params.apiId || params.queryId;
+      const baseId = params.baseApiId || params.baseQueryId;
 
-      return getAction(state, id);
+      return getActionByBaseId(state, baseId);
     }
 
     return null;
@@ -127,7 +136,7 @@ export const useSelectedEntity = () => {
 };
 
 export const useEntityLink = () => {
-  const pageId = useSelector(getCurrentPageId);
+  const basePageId = useSelector(getCurrentBasePageId);
   const plugins = useSelector(getPlugins);
   const applicationId = useSelector(getCurrentApplicationId);
 
@@ -135,28 +144,35 @@ export const useEntityLink = () => {
 
   const navigateToEntity = useCallback(
     (name) => {
-      const dataTree = getDataTree(store.getState());
+      const appState = store.getState();
+      const dataTree = getDataTree(appState);
+      const configTree = getConfigTree();
       const entity = dataTree[name];
-      if (!pageId) return;
+      const entityConfig = configTree[name];
+      if (!basePageId) return;
       if (isWidget(entity)) {
+        const widgetEntity = entity as WidgetEntity;
         navigateToWidget(
-          entity.widgetId,
+          widgetEntity.widgetId,
           entity.type,
-          pageId || "",
+          basePageId || "",
           NavigationMethod.Debugger,
         );
       } else if (isAction(entity)) {
-        const actionConfig = getActionConfig(entity.pluginType);
+        const actionConfig = getActionConfig(entityConfig.pluginType);
+        const action = getAction(appState, entity.actionId);
         let plugin;
-        if (entity?.pluginType === PluginType.SAAS) {
-          plugin = plugins.find((plugin) => plugin?.id === entity?.pluginId);
+        if (entityConfig?.pluginType === PluginType.SAAS) {
+          plugin = plugins.find(
+            (plugin) => plugin?.id === entityConfig?.pluginId,
+          );
         }
         const url =
           applicationId &&
           actionConfig?.getURL(
-            pageId,
-            entity.actionId,
-            entity.pluginType,
+            basePageId,
+            action?.baseId || "",
+            entityConfig.pluginType,
             plugin,
           );
 
@@ -164,15 +180,16 @@ export const useEntityLink = () => {
           history.push(url);
         }
       } else if (isJSAction(entity)) {
+        const action = getAction(appState, entity.actionId);
         history.push(
           jsCollectionIdURL({
-            pageId,
-            collectionId: entity.actionId,
+            basePageId,
+            baseCollectionId: action?.baseId || "",
           }),
         );
       }
     },
-    [pageId],
+    [basePageId],
   );
 
   return {

@@ -1,28 +1,34 @@
 package com.appsmith.server.services.ce;
 
-import com.appsmith.server.domains.ApplicationTemplate;
+import com.appsmith.server.domains.Application;
 import com.appsmith.server.dtos.ApplicationImportDTO;
-import com.appsmith.server.dtos.ApplicationTemplateDTO;
-import com.appsmith.server.services.CrudService;
+import com.appsmith.server.dtos.ApplicationJson;
+import com.appsmith.server.dtos.ApplicationTemplate;
+import com.appsmith.server.dtos.TemplateDTO;
 import org.springframework.util.MultiValueMap;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.util.List;
 
-public interface ApplicationTemplateServiceCE extends CrudService<ApplicationTemplate, String> {
+public interface ApplicationTemplateServiceCE {
 
-    Mono<List<ApplicationTemplateDTO>> getActiveTemplates(List<String> templateIds);
+    Mono<List<ApplicationTemplate>> getActiveTemplates(List<String> templateIds);
 
-    Flux<ApplicationTemplateDTO> getSimilarTemplates(String templateId, MultiValueMap<String, String> params);
+    Flux<ApplicationTemplate> getSimilarTemplates(String templateId, MultiValueMap<String, String> params);
 
-    Mono<List<ApplicationTemplateDTO>> getRecentlyUsedTemplates();
-
-    Mono<ApplicationTemplateDTO> getTemplateDetails(String templateId);
+    Mono<ApplicationTemplate> getTemplateDetails(String templateId);
 
     Mono<ApplicationImportDTO> importApplicationFromTemplate(String templateId, String workspaceId);
 
-    Mono<ApplicationImportDTO> mergeTemplateWithApplication(String templateId, String applicationId, String workspaceId, String branchName, List<String> pagesToImport);
+    Mono<ApplicationImportDTO> mergeTemplateWithApplication(
+            String templateId, String branchedApplicationId, String workspaceId, List<String> pagesToImport);
 
-    Mono<ApplicationTemplateDTO> getFilters();
+    Mono<ApplicationTemplate> getFilters();
+
+    Mono<Application> publishAsCommunityTemplate(TemplateDTO resource);
+
+    Mono<Boolean> publishAppsmithTemplate(TemplateDTO resource);
+
+    Mono<ApplicationJson> getApplicationJsonFromTemplate(String templateId);
 }

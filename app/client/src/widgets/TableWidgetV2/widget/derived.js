@@ -178,8 +178,7 @@ export default {
       },
     };
     const compactMode = props.compactMode || "DEFAULT";
-    const componentHeight =
-      (props.bottomRow - props.topRow) * props.parentRowSpace - 10;
+    const componentHeight = props.componentHeight - 10;
     const tableSizes = TABLE_SIZES[compactMode];
 
     let pageSize =
@@ -188,7 +187,9 @@ export default {
         tableSizes.COLUMN_HEADER_HEIGHT) /
       tableSizes.ROW_HEIGHT;
 
-    return pageSize % 1 > 0.3 ? Math.ceil(pageSize) : Math.floor(pageSize);
+    return pageSize % 1 > 0.3 && props.tableData.length > pageSize
+      ? Math.ceil(pageSize)
+      : Math.floor(pageSize);
   },
   //
   getProcessedTableData: (props, moment, _) => {
@@ -214,7 +215,6 @@ export default {
   getOrderedTableColumns: (props, moment, _) => {
     let columns = [];
     let existingColumns = props.primaryColumns || {};
-
     /*
      * Assign index based on the columnOrder
      */
@@ -249,8 +249,10 @@ export default {
     Object.values(existingColumns).forEach((column) => {
       /* guard to not allow columns without id */
       if (column.id) {
-        column.isAscOrder = column.id === sortByColumn ? isAscOrder : undefined;
-        columns.push(column);
+        columns.push({
+          ...column,
+          isAscOrder: column.id === sortByColumn ? isAscOrder : undefined,
+        });
       }
     });
 
@@ -315,18 +317,68 @@ export default {
     const sortByColumnId = props.sortOrder.column;
 
     let sortedTableData;
+    /* 
+    Check if there are select columns, 
+    and if the columns are sorting by label instead of default value 
+    */
+    const selectColumnKeysWithSortByLabel = [];
+    Object.entries(primaryColumns).forEach(([id, column]) => {
+      const isColumnSortedByLabel =
+        column?.columnType === "select" &&
+        column?.sortBy === "label" &&
+        column?.selectOptions?.length;
+      if (isColumnSortedByLabel) {
+        selectColumnKeysWithSortByLabel.push(id);
+      }
+    });
+
+    /* 
+    If there are select columns, 
+    transform the specific columns data to show the label instead of the value for sorting 
+    */
+    let processedTableDataWithLabelInsteadOfValue;
+    if (selectColumnKeysWithSortByLabel.length) {
+      const transformedValueToLabelTableData = processedTableData.map((row) => {
+        const newRow = { ...row };
+        selectColumnKeysWithSortByLabel.forEach((key) => {
+          const value = row[key];
+          const selectOptions =
+            primaryColumns[key].selectOptions[row.__originalIndex__];
+          const option = selectOptions.find((option) => option.value === value);
+
+          if (option) {
+            newRow[key] = option.label;
+          }
+        });
+
+        return newRow;
+      });
+      processedTableDataWithLabelInsteadOfValue =
+        transformedValueToLabelTableData;
+    }
 
     if (sortByColumnId) {
       const sortBycolumn = columns.find(
         (column) => column.id === sortByColumnId,
       );
-      const sortByColumnOriginalId = sortBycolumn.originalId;
+      const sortByColumnOriginalId = sortBycolumn.alias;
 
       const columnType =
         sortBycolumn && sortBycolumn.columnType
           ? sortBycolumn.columnType
           : "text";
-      const inputFormat = sortBycolumn.inputFormat;
+
+      let inputFormat = (() => {
+        switch (sortBycolumn.inputFormat) {
+          case "Epoch":
+            return "X";
+          case "Milliseconds":
+            return "x";
+          default:
+            return sortBycolumn.inputFormat;
+        }
+      })();
+
       const isEmptyOrNil = (value) => {
         return _.isNil(value) || value === "";
       };
@@ -339,7 +391,12 @@ export default {
         }
       };
 
-      sortedTableData = processedTableData.sort((a, b) => {
+      const transformedTableDataForSorting =
+        selectColumnKeysWithSortByLabel.length
+          ? processedTableDataWithLabelInsteadOfValue
+          : processedTableData;
+
+      sortedTableData = transformedTableDataForSorting.sort((a, b) => {
         if (_.isPlainObject(a) && _.isPlainObject(b)) {
           if (
             isEmptyOrNil(a[sortByColumnOriginalId]) ||
@@ -350,6 +407,7 @@ export default {
           } else {
             switch (columnType) {
               case "number":
+              case "currency":
                 return sortByOrder(
                   Number(a[sortByColumnOriginalId]) >
                     Number(b[sortByColumnOriginalId]),
@@ -364,6 +422,22 @@ export default {
                 } catch (e) {
                   return -1;
                 }
+              case "url":
+                const column = primaryColumns[sortByColumnOriginalId];
+                if (column && column.displayText) {
+                  if (_.isString(column.displayText)) {
+                    return sortByOrder(false);
+                  } else if (_.isArray(column.displayText)) {
+                    return sortByOrder(
+                      column.displayText[a.__originalIndex__]
+                        .toString()
+                        .toLowerCase() >
+                        column.displayText[b.__originalIndex__]
+                          .toString()
+                          .toLowerCase(),
+                    );
+                  }
+                }
               default:
                 return sortByOrder(
                   a[sortByColumnOriginalId].toString().toLowerCase() >
@@ -375,6 +449,26 @@ export default {
           return isAscOrder ? 1 : 0;
         }
       });
+
+      if (selectColumnKeysWithSortByLabel.length) {
+        const transformedLabelToValueData = sortedTableData.map((row) => {
+          const newRow = { ...row };
+          selectColumnKeysWithSortByLabel.forEach((key) => {
+            const label = row[key];
+            const selectOptions =
+              primaryColumns[key].selectOptions[row.__originalIndex__];
+            const option = selectOptions.find(
+              (option) => option.label === label,
+            );
+            if (option) {
+              newRow[key] = option.value;
+            }
+          });
+
+          return newRow;
+        });
+        sortedTableData = transformedLabelToValueData;
+      }
     } else {
       sortedTableData = [...processedTableData];
     }
@@ -431,10 +525,7 @@ export default {
       startsWith: (a, b) => {
         try {
           return (
-            a
-              .toString()
-              .toLowerCase()
-              .indexOf(b.toString().toLowerCase()) === 0
+            a.toString().toLowerCase().indexOf(b.toString().toLowerCase()) === 0
           );
         } catch (e) {
           return false;
@@ -493,20 +584,38 @@ export default {
 
     const finalTableData = sortedTableData.filter((row) => {
       let isSearchKeyFound = true;
-
+      const columnWithDisplayText = Object.values(props.primaryColumns).filter(
+        (column) => column.columnType === "url" && column.displayText,
+      );
+      const displayedRow = {
+        ...row,
+        ...columnWithDisplayText.reduce((acc, column) => {
+          let displayText;
+          if (_.isArray(column.displayText)) {
+            displayText = column.displayText[row.__originalIndex__];
+          } else {
+            displayText = column.displayText;
+          }
+          acc[column.alias] = displayText;
+          return acc;
+        }, {}),
+      };
       if (searchKey) {
-        isSearchKeyFound = Object.values(_.omit(row, hiddenColumns))
+        isSearchKeyFound = Object.values(_.omit(displayedRow, hiddenColumns))
           .join(", ")
           .toLowerCase()
           .includes(searchKey);
       }
-
       if (!isSearchKeyFound) {
         return false;
       }
 
-      /* when there is no filter defined */
-      if (!props.filters || props.filters.length === 0) {
+      /* when there is no filter defined or when server side filtering is enabled prevent client-side filtering  */
+      if (
+        !props.filters ||
+        props.filters.length === 0 ||
+        props.enableServerSideFiltering
+      ) {
         return true;
       }
 
@@ -520,7 +629,7 @@ export default {
             ConditionFunctions[props.filters[i].condition];
           if (conditionFunction) {
             filterResult = conditionFunction(
-              row[props.filters[i].column],
+              displayedRow[props.filters[i].column],
               props.filters[i].value,
             );
           }
@@ -546,7 +655,6 @@ export default {
 
       return isSatisfyingFilters;
     });
-
     return finalTableData;
   },
   //
@@ -702,7 +810,7 @@ export default {
   //
   getEditableCellValidity: (props, moment, _) => {
     if (
-      (!props.editableCell.column && !props.isAddRowInProgress) ||
+      (!props.editableCell?.column && !props.isAddRowInProgress) ||
       !props.primaryColumns
     ) {
       return {};
@@ -743,7 +851,7 @@ export default {
     };
 
     let editableColumns = [];
-    const validatableColumns = ["text", "number"];
+    const validatableColumns = ["text", "number", "currency"];
 
     if (props.isAddRowInProgress) {
       Object.values(props.primaryColumns)
@@ -756,11 +864,11 @@ export default {
         });
     } else {
       const editedColumn = Object.values(props.primaryColumns).find(
-        (column) => column.alias === props.editableCell.column,
+        (column) => column.alias === props.editableCell?.column,
       );
 
       if (validatableColumns.includes(editedColumn.columnType)) {
-        editableColumns.push([editedColumn, props.editableCell.value]);
+        editableColumns.push([editedColumn, props.editableCell?.value]);
       }
     }
 
@@ -794,6 +902,7 @@ export default {
         /* Column type related validations */
         switch (editedColumn.columnType) {
           case "number":
+          case "currency":
             if (
               !_.isNil(validation.min) &&
               validation.min !== "" &&
@@ -825,6 +934,7 @@ export default {
     const columns = props.primaryColumns
       ? Object.values(props.primaryColumns)
       : [];
+
     return columns
       .sort((a, b) => a.index - b.index)
       .map((column) => ({

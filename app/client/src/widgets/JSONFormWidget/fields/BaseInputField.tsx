@@ -7,7 +7,7 @@ import React, {
   useState,
 } from "react";
 import styled from "styled-components";
-import { Alignment, IconName } from "@blueprintjs/core";
+import type { Alignment, IconName } from "@blueprintjs/core";
 import { isNil } from "lodash";
 import { useController } from "react-hook-form";
 
@@ -21,20 +21,21 @@ import {
   FIELD_REQUIRED_ERROR,
   INPUT_DEFAULT_TEXT_MAX_CHAR_ERROR,
   INPUT_TEXT_MAX_CHAR_ERROR,
-} from "@appsmith/constants/messages";
-import {
-  ActionUpdateDependency,
+} from "ee/constants/messages";
+import type {
   BaseFieldComponentProps,
   FieldComponentBaseProps,
   FieldEventProps,
-  FieldType,
-  INPUT_FIELD_TYPE,
   INPUT_TYPES,
   SchemaItem,
 } from "../constants";
-import BaseInputComponent, {
-  InputHTMLType,
-} from "widgets/BaseInputWidget/component";
+import {
+  ActionUpdateDependency,
+  FieldType,
+  INPUT_FIELD_TYPE,
+} from "../constants";
+import type { InputHTMLType } from "widgets/BaseInputWidget/component";
+import BaseInputComponent from "widgets/BaseInputWidget/component";
 import { BASE_LABEL_TEXT_SIZE } from "../component/FieldLabel";
 
 export type BaseInputComponentProps = FieldComponentBaseProps &
@@ -56,30 +57,31 @@ export type BaseInputComponentProps = FieldComponentBaseProps &
     validation?: boolean;
   };
 
-export type OnValueChangeOptions = {
+export interface OnValueChangeOptions {
+  // TODO: Fix this the next time the file is edited
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   fieldOnChangeHandler: (...event: any[]) => void;
   isValueValid: boolean;
-};
+}
 
-type BaseInputFieldProps<
-  TSchemaItem extends SchemaItem = SchemaItem
-> = BaseFieldComponentProps<BaseInputComponentProps & TSchemaItem> & {
-  inputHTMLType?: InputHTMLType;
-  leftIcon?: IconName | JSX.Element;
-  transformValue: (
-    newValue: string,
-    oldValue: string,
-  ) => { text: string; value?: number | string | null | undefined };
-  isValid: (schemaItem: TSchemaItem, value?: string | null) => boolean;
-};
+type BaseInputFieldProps<TSchemaItem extends SchemaItem = SchemaItem> =
+  BaseFieldComponentProps<BaseInputComponentProps & TSchemaItem> & {
+    inputHTMLType?: InputHTMLType;
+    leftIcon?: IconName | JSX.Element;
+    transformValue: (
+      newValue: string,
+      oldValue: string,
+    ) => { text: string; value?: number | string | null | undefined };
+    isValid: (schemaItem: TSchemaItem, value?: string | null) => boolean;
+  };
 
-type IsValidOptions = {
+interface IsValidOptions {
   fieldType: FieldType;
-};
+}
 
-type StyledInputWrapperProps = {
+interface StyledInputWrapperProps {
   multiline: boolean;
-};
+}
 
 const COMPONENT_DEFAULT_VALUES: BaseInputComponentProps = {
   isDisabled: false,
@@ -174,10 +176,8 @@ function BaseInputField<TSchemaItem extends SchemaItem>({
     name,
   });
 
-  const {
-    onBlur: onBlurDynamicString,
-    onFocus: onFocusDynamicString,
-  } = schemaItem;
+  const { onBlur: onBlurDynamicString, onFocus: onFocusDynamicString } =
+    schemaItem;
 
   useEffect(() => {
     const stringifiedValue = isNil(inputDefaultValue)
@@ -246,13 +246,15 @@ function BaseInputField<TSchemaItem extends SchemaItem>({
   });
 
   const inputType =
-    INPUT_FIELD_TYPE[schemaItem.fieldType as typeof INPUT_TYPES[number]];
+    INPUT_FIELD_TYPE[schemaItem.fieldType as (typeof INPUT_TYPES)[number]];
 
   const keyDownHandler = useCallback(
     (
       e:
         | React.KeyboardEvent<HTMLTextAreaElement>
         | React.KeyboardEvent<HTMLInputElement>,
+      // TODO: Fix this the next time the file is edited
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       fieldOnChangeHandler: (...event: any[]) => void,
       isValueValid: boolean,
     ) => {
@@ -277,6 +279,8 @@ function BaseInputField<TSchemaItem extends SchemaItem>({
   const onTextChangeHandler = useCallback(
     (
       inputValue: string,
+      // TODO: Fix this the next time the file is edited
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       fieldOnChangeHandler: (...event: any[]) => void,
       triggerPropertyName = "onTextChange",
     ) => {
@@ -351,9 +355,17 @@ function BaseInputField<TSchemaItem extends SchemaItem>({
   }, [schemaItem, isDirty, isValueValid, inputText]);
 
   const fieldComponent = useMemo(() => {
+    const autoFillProps =
+      !schemaItem.shouldAllowAutofill &&
+      [FieldType.EMAIL_INPUT, FieldType.PASSWORD_INPUT].includes(
+        schemaItem.fieldType,
+      )
+        ? { autoComplete: "off" }
+        : {};
     return (
       <BaseInputComponent
         {...conditionalProps}
+        {...autoFillProps}
         accentColor={schemaItem.accentColor}
         borderRadius={schemaItem.borderRadius}
         boxShadow={schemaItem.boxShadow}

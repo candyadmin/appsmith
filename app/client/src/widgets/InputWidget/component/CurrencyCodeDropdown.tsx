@@ -1,7 +1,9 @@
 import React from "react";
 import styled, { createGlobalStyle } from "styled-components";
-import { CurrencyTypeOptions, CurrencyOptionProps } from "constants/Currency";
-import { Dropdown, DropdownOption, Icon, IconSize } from "design-system";
+import type { CurrencyOptionProps } from "constants/Currency";
+import { CurrencyTypeOptions } from "constants/Currency";
+import type { DropdownOption } from "@design-system/widgets-old";
+import { Dropdown, Icon, IconSize } from "@design-system/widgets-old";
 import { countryToFlag } from "./utilities";
 import { Colors } from "constants/Colors";
 import { Classes } from "@blueprintjs/core";
@@ -64,8 +66,8 @@ export const PopoverStyles = createGlobalStyle<{
     }
 
     .${props.portalClassName}  .${Classes.INPUT}:focus, .${
-    props.portalClassName
-  }  .${Classes.INPUT}:active {
+      props.portalClassName
+    }  .${Classes.INPUT}:active {
       border: 1px solid ${props.accentColor} !important;
     }
 

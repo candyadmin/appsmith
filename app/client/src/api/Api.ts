@@ -1,11 +1,13 @@
-import axios, { AxiosInstance, AxiosRequestConfig } from "axios";
-import { REQUEST_TIMEOUT_MS } from "@appsmith/constants/ApiConstants";
+import type { AxiosInstance, AxiosRequestConfig } from "axios";
+import axios from "axios";
+import { REQUEST_TIMEOUT_MS } from "ee/constants/ApiConstants";
 import { convertObjectToQueryParams } from "utils/URLUtils";
 import {
   apiFailureResponseInterceptor,
   apiRequestInterceptor,
   apiSuccessResponseInterceptor,
-} from "api/ApiUtils";
+  blockedApiRoutesForAirgapInterceptor,
+} from "ee/api/ApiUtils";
 
 //TODO(abhinav): Refactor this to make more composable.
 export const apiRequestConfig = {
@@ -19,23 +21,42 @@ export const apiRequestConfig = {
 
 const axiosInstance: AxiosInstance = axios.create();
 
-axiosInstance.interceptors.request.use(apiRequestInterceptor);
+const requestInterceptors = [
+  blockedApiRoutesForAirgapInterceptor,
+  apiRequestInterceptor,
+];
+requestInterceptors.forEach((interceptor) => {
+  // TODO: Fix this the next time the file is edited
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  axiosInstance.interceptors.request.use(interceptor as any);
+});
+
 axiosInstance.interceptors.response.use(
   apiSuccessResponseInterceptor,
   apiFailureResponseInterceptor,
 );
 
 class Api {
-  static get(url: string, queryParams?: any, config: AxiosRequestConfig = {}) {
+  static async get(
+    url: string,
+    // TODO: Fix this the next time the file is edited
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    queryParams?: any,
+    config: AxiosRequestConfig = {},
+  ) {
     return axiosInstance.get(url + convertObjectToQueryParams(queryParams), {
       ...apiRequestConfig,
       ...config,
     });
   }
 
-  static post(
+  static async post(
     url: string,
+    // TODO: Fix this the next time the file is edited
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     body?: any,
+    // TODO: Fix this the next time the file is edited
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     queryParams?: any,
     config: AxiosRequestConfig = {},
   ) {
@@ -49,9 +70,13 @@ class Api {
     );
   }
 
-  static put(
+  static async put(
     url: string,
+    // TODO: Fix this the next time the file is edited
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     body?: any,
+    // TODO: Fix this the next time the file is edited
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     queryParams?: any,
     config: AxiosRequestConfig = {},
   ) {
@@ -65,9 +90,13 @@ class Api {
     );
   }
 
-  static patch(
+  static async patch(
     url: string,
+    // TODO: Fix this the next time the file is edited
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     body?: any,
+    // TODO: Fix this the next time the file is edited
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     queryParams?: any,
     config: AxiosRequestConfig = {},
   ) {
@@ -81,8 +110,10 @@ class Api {
     );
   }
 
-  static delete(
+  static async delete(
     url: string,
+    // TODO: Fix this the next time the file is edited
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     queryParams?: any,
     config: AxiosRequestConfig = {},
   ) {

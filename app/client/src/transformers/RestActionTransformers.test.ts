@@ -2,8 +2,10 @@ import {
   extractApiUrlPath,
   transformRestAction,
 } from "transformers/RestActionTransformer";
-import { PluginType, ApiAction } from "entities/Action";
+import type { ApiAction } from "entities/Action";
+import { PluginType } from "entities/Action";
 import {
+  HTTP_PROTOCOL,
   MultiPartOptionTypes,
   POST_BODY_FORMAT_OPTIONS,
   // POST_BODY_FORMAT_OPTIONS_ENUM,
@@ -18,9 +20,11 @@ const BASE_ACTION: ApiAction = {
   invalids: [],
   isValid: false,
   workspaceId: "",
+  applicationId: "",
   pageId: "",
   pluginId: "",
   id: "testId",
+  baseId: "testBaseId",
   datasource: {
     id: "testDataSource",
   },
@@ -28,6 +32,7 @@ const BASE_ACTION: ApiAction = {
   pluginType: PluginType.API,
   actionConfiguration: {
     httpMethod: "GET",
+    httpVersion: HTTP_PROTOCOL.HTTP11.value,
     encodeParamsToggle: true,
     path: "users",
     headers: [],

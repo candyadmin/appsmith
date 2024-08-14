@@ -195,6 +195,60 @@ const sampleProcessedTableData = [
 ];
 
 describe("Validates getFilteredTableData Properties", () => {
+  const inputWithDisplayText = {
+    processedTableData: [
+      { url: "A.COM", __originalIndex__: 0 },
+      { url: "B.COM", __originalIndex__: 1 },
+      { url: "C.COM", __originalIndex__: 2 },
+      { url: "D.COM", __originalIndex__: 3 },
+    ],
+    sortOrder: { column: "url", order: "asc" },
+    columnOrder: ["url"],
+    primaryColumns: {
+      url: {
+        index: 0,
+        width: 150,
+        id: "url",
+        alias: "url",
+        originalId: "url",
+        horizontalAlignment: "LEFT",
+        verticalAlignment: "CENTER",
+        columnType: "url",
+        textColor: "#231F20",
+        textSize: "PARAGRAPH",
+        fontStyle: "REGULAR",
+        enableFilter: true,
+        enableSort: true,
+        isVisible: true,
+        isDerived: false,
+        label: "awesome",
+        isAscOrder: undefined,
+        displayText: ["Z", "Y", "X", "W"],
+        computedValue: ["A.COM", "B.COM", "C.COM", "D.COM"],
+      },
+    },
+    tableColumns: [
+      {
+        index: 0,
+        width: 150,
+        id: "url",
+        horizontalAlignment: "LEFT",
+        verticalAlignment: "CENTER",
+        columnType: "url",
+        textColor: "#231F20",
+        textSize: "PARAGRAPH",
+        fontStyle: "REGULAR",
+        enableFilter: true,
+        enableSort: true,
+        isVisible: true,
+        isDerived: false,
+        label: "awesome",
+        isAscOrder: undefined,
+        displayText: ["Z", "Y", "X", "W"],
+        computedValue: ["A.COM", "B.COM", "C.COM", "D.COM"],
+      },
+    ],
+  };
   it("validates generate filtered table data", () => {
     const { getFilteredTableData } = derivedProperty;
     const input = {
@@ -850,6 +904,125 @@ describe("Validates getFilteredTableData Properties", () => {
     expect(result).toStrictEqual(expected);
   });
 
+  it("validates generated filtered table data with date values to be sorted correctly", () => {
+    const { getFilteredTableData } = derivedProperty;
+    const input = {
+      processedTableData: [
+        { guid: "abc123", createdAt: 1678886400 },
+        { guid: "def456", createdAt: 1747968000 },
+        { guid: "ghi789", createdAt: 1646582400 },
+        { guid: "jkl012", createdAt: 1668806400 },
+        { guid: "mno345", createdAt: 1677840000 },
+        { guid: "pqr678", createdAt: 1649670400 },
+        { guid: "stu901", createdAt: 1683552000 },
+        { guid: "vwx234", createdAt: 1642137600 },
+        { guid: "yzab567", createdAt: 1661740800 },
+        { guid: "cde890", createdAt: 1670563200 },
+      ],
+      sortOrder: { column: "createdAt", order: "desc" },
+      columnOrder: ["guid", "createdAt"],
+      primaryColumns: {
+        guid: {
+          allowCellWrapping: false,
+          allowSameOptionsInNewRow: true,
+          index: 0,
+          width: 150,
+          originalId: "guid",
+          id: "guid",
+          alias: "guid",
+          horizontalAlignment: "LEFT",
+          verticalAlignment: "CENTER",
+          columnType: "text",
+          textSize: "0.875rem",
+          enableFilter: true,
+          enableSort: true,
+          isVisible: true,
+          isDisabled: false,
+          isCellEditable: false,
+          isEditable: false,
+          isCellVisible: true,
+          isDerived: false,
+          label: "guid",
+          isSaveVisible: true,
+          isDiscardVisible: true,
+          computedValue: [
+            "abc123",
+            "def456",
+            "ghi789",
+            "jkl012",
+            "mno345",
+            "pqr678",
+            "stu901",
+            "vwx234",
+            "yzab567",
+            "cde890",
+          ],
+          sticky: "",
+          validation: {},
+          currencyCode: "USD",
+          decimals: 0,
+          thousandSeparator: true,
+          notation: "standard",
+          textColor: "",
+          cellBackground: "",
+          fontStyle: "",
+        },
+        createdAt: {
+          allowCellWrapping: false,
+          allowSameOptionsInNewRow: true,
+          index: 1,
+          width: 150,
+          originalId: "createdAt",
+          id: "createdAt",
+          alias: "createdAt",
+          horizontalAlignment: "LEFT",
+          verticalAlignment: "CENTER",
+          columnType: "date",
+          textSize: "0.875rem",
+          enableFilter: true,
+          enableSort: true,
+          isVisible: true,
+          isDisabled: false,
+          isCellEditable: false,
+          isEditable: false,
+          isCellVisible: true,
+          isDerived: false,
+          label: "createdAt",
+          isSaveVisible: true,
+          isDiscardVisible: true,
+          computedValue: [
+            1678886400, 1747968000, 1646582400, 1668806400, 1677840000,
+            1649670400, 1683552000, 1642137600, 1661740800, 1670563200,
+          ],
+          sticky: "",
+          validation: {},
+          currencyCode: "USD",
+          decimals: 0,
+          thousandSeparator: true,
+          notation: "standard",
+          inputFormat: "Epoch",
+          textColor: "",
+          cellBackground: "",
+          fontStyle: "",
+          outputFormat: "",
+        },
+      },
+    };
+
+    input.orderedTableColumns = Object.values(input.primaryColumns).sort(
+      (a, b) => {
+        return input.columnOrder[a.id] < input.columnOrder[b.id];
+      },
+    );
+
+    const expected = input.processedTableData.sort((a, b) => {
+      return a.createdAt < b.createdAt ? 1 : -1;
+    });
+
+    let result = getFilteredTableData(input, moment, _);
+    expect(result).toStrictEqual(expected);
+  });
+
   it("validates generated filtered table data to be filtered correctly in empty comparison", () => {
     const { getFilteredTableData } = derivedProperty;
     const input = {
@@ -1007,9 +1180,9 @@ describe("Validates getFilteredTableData Properties", () => {
       transientTableData: {},
       tableData: [
         {
-          "1": "abc",
-          "2": "bcd",
-          "3": "cde",
+          1: "abc",
+          2: "bcd",
+          3: "cde",
           Dec: "mon",
           demo: "3",
           demo_1: "1",
@@ -1023,9 +1196,9 @@ describe("Validates getFilteredTableData Properties", () => {
           ÜserÑame: "john",
         },
         {
-          "1": "asd",
-          "2": "dfg",
-          "3": "jkl",
+          1: "asd",
+          2: "dfg",
+          3: "jkl",
           Dec: "mon2",
           demo: "2",
           demo_1: "1",
@@ -1042,9 +1215,9 @@ describe("Validates getFilteredTableData Properties", () => {
     };
     const expected = [
       {
-        "1": "abc",
-        "2": "bcd",
-        "3": "cde",
+        1: "abc",
+        2: "bcd",
+        3: "cde",
         Dec: "mon",
         demo: "3",
         demo_1: "1",
@@ -1060,9 +1233,9 @@ describe("Validates getFilteredTableData Properties", () => {
         __primaryKey__: undefined,
       },
       {
-        "1": "asd",
-        "2": "dfg",
-        "3": "jkl",
+        1: "asd",
+        2: "dfg",
+        3: "jkl",
         Dec: "mon2",
         demo: "2",
         demo_1: "1",
@@ -1081,6 +1254,72 @@ describe("Validates getFilteredTableData Properties", () => {
 
     let result = getProcessedTableData(input, moment, _);
 
+    expect(result).toStrictEqual(expected);
+  });
+
+  it("validate generated sorted table data for URL columntype with display text property", () => {
+    const { getFilteredTableData } = derivedProperty;
+    const input = { ...inputWithDisplayText };
+
+    input.orderedTableColumns = Object.values(input.primaryColumns).sort(
+      (a, b) => {
+        return input.columnOrder[a.id] < input.columnOrder[b.id];
+      },
+    );
+
+    const expected = [
+      { url: "D.COM", __originalIndex__: 3 },
+      { url: "C.COM", __originalIndex__: 2 },
+      { url: "B.COM", __originalIndex__: 1 },
+      { url: "A.COM", __originalIndex__: 0 },
+    ];
+
+    let result = getFilteredTableData(input, moment, _);
+    expect(result).toStrictEqual(expected);
+  });
+
+  it("validate filters on table data for URL columntype with display text", () => {
+    const { getFilteredTableData } = derivedProperty;
+    const input = {
+      ...inputWithDisplayText,
+      filters: [
+        {
+          condition: "contains",
+          column: "url",
+          value: "Y",
+        },
+      ],
+    };
+
+    input.orderedTableColumns = Object.values(input.primaryColumns).sort(
+      (a, b) => {
+        return input.columnOrder[a.id] < input.columnOrder[b.id];
+      },
+    );
+
+    const expected = [{ url: "B.COM", __originalIndex__: 1 }];
+
+    let result = getFilteredTableData(input, moment, _);
+    expect(result).toStrictEqual(expected);
+  });
+
+  it("validate search on table data for URL columntype with display text", () => {
+    const { getFilteredTableData } = derivedProperty;
+    const input = {
+      ...inputWithDisplayText,
+      searchText: "Y",
+      enableClientSideSearch: true,
+    };
+
+    input.orderedTableColumns = Object.values(input.primaryColumns).sort(
+      (a, b) => {
+        return input.columnOrder[a.id] < input.columnOrder[b.id];
+      },
+    );
+
+    const expected = [{ url: "B.COM", __originalIndex__: 1 }];
+
+    let result = getFilteredTableData(input, moment, _);
     expect(result).toStrictEqual(expected);
   });
 });
@@ -2087,7 +2326,7 @@ describe("validate getUpdatedRow", () => {
         { id: 234, name: "Jane Doe", extra: "Extra2", __originalIndex__: 2 },
         { id: 123, name: "John Doe", extra: "Extra1", __originalIndex__: 1 },
       ],
-    }
+    };
     expect(getUpdatedRow(input1, moment, _)).toStrictEqual({
       id: 123,
       name: "John Doe1",
@@ -2160,7 +2399,7 @@ describe("validate getUpdatedRow", () => {
       status: "--",
     });
   });
-})
+});
 describe("getEditableCellValidity", () => {
   const { getEditableCellValidity } = derivedProperty;
 

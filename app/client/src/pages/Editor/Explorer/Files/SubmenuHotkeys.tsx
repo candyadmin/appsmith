@@ -1,14 +1,13 @@
 import React from "react";
-import { HotkeysTarget } from "@blueprintjs/core/lib/esnext/components/hotkeys/hotkeysTarget.js";
-import { Hotkey, Hotkeys } from "@blueprintjs/core";
-import { SelectEvent } from "components/editorComponents/GlobalSearch/utils";
+import { Hotkey, Hotkeys, HotkeysTarget } from "@blueprintjs/core";
+import type { SelectEvent } from "components/editorComponents/GlobalSearch/utils";
 
-type Props = {
+interface Props {
   handleUpKey: () => void;
   handleDownKey: () => void;
   handleSubmitKey: (e: SelectEvent) => void;
   children: React.ReactNode;
-};
+}
 
 @HotkeysTarget
 class SubmenuHotKeys extends React.Component<Props> {

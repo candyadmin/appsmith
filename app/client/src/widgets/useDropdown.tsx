@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { getMainCanvas } from "./WidgetUtils";
 import styled from "styled-components";
-import { BaseSelectRef } from "rc-select";
-import { RenderMode, RenderModes } from "constants/WidgetConstants";
+import type { BaseSelectRef } from "rc-select";
+import type { RenderMode } from "constants/WidgetConstants";
+import { RenderModes } from "constants/WidgetConstants";
 
 const BackDropContainer = styled.div`
   position: fixed;
@@ -14,12 +15,12 @@ const BackDropContainer = styled.div`
   display: none;
 `;
 
-type useDropdownProps = {
+interface useDropdownProps {
   inputRef: React.RefObject<HTMLInputElement>;
   renderMode?: RenderMode;
   onDropdownOpen?: () => void;
   onDropdownClose?: () => void;
-};
+}
 const FOCUS_TIMEOUT = 500;
 
 // TODO: Refactor More functionalities in MultiSelect, MultiTreeSelect and TreeSelect Components

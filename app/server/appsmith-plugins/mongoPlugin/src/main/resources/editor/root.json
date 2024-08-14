@@ -5,26 +5,26 @@
       "identifier": "SELECTOR",
       "children": [
         {
-          "label": "Commands",
+          "label": "Command",
           "description": "Choose method you would like to use to query the database",
           "configProperty": "actionConfiguration.formData.command.data",
           "controlType": "DROP_DOWN",
           "initialValue": "FIND",
           "options": [
             {
-              "label": "Find Document(s)",
+              "label": "Find document(s)",
               "value": "FIND"
             },
             {
-              "label": "Insert Document(s)",
+              "label": "Insert document(s)",
               "value": "INSERT"
             },
             {
-              "label": "Update Document(s)",
+              "label": "Update document(s)",
               "value": "UPDATE"
             },
             {
-              "label": "Delete Document(s)",
+              "label": "Delete document(s)",
               "value": "DELETE"
             },
             {

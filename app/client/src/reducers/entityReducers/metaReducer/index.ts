@@ -1,18 +1,24 @@
 import { set } from "lodash";
 import { createReducer } from "utils/ReducerUtils";
-import {
+import type {
   UpdateWidgetMetaPropertyPayload,
   ResetWidgetMetaPayload,
+  BatchUpdateWidgetMetaPropertyPayload,
 } from "actions/metaActions";
 
+import type { ReduxAction } from "ee/constants/ReduxActionConstants";
 import {
   ReduxActionTypes,
-  ReduxAction,
   WidgetReduxActionTypes,
-} from "@appsmith/constants/ReduxActionConstants";
+} from "ee/constants/ReduxActionConstants";
 import produce from "immer";
-import { EvalMetaUpdates } from "workers/common/DataTreeEvaluator/types";
-import { getMetaWidgetResetObj } from "./metaReducerUtils";
+import type { EvalMetaUpdates } from "ee/workers/common/DataTreeEvaluator/types";
+import {
+  getMetaWidgetResetObj,
+  getNextMetaStateWithUpdates,
+  setMetaValuesOnResetFromEval,
+} from "./metaReducerUtils";
+import type { WidgetEntityConfig } from "ee/entities/DataTree/types";
 
 export type WidgetMetaState = Record<string, unknown>;
 export type MetaState = Record<string, WidgetMetaState>;
@@ -26,16 +32,7 @@ export const metaReducer = createReducer(initialState, {
       evalMetaUpdates: EvalMetaUpdates;
     }>,
   ) => {
-    const { evalMetaUpdates } = action.payload;
-
-    // if metaObject is updated in dataTree we also update meta values, to keep meta state in sync.
-    const newMetaState = produce(state, (draftMetaState) => {
-      evalMetaUpdates.forEach(({ metaPropertyPath, value, widgetId }) => {
-        set(draftMetaState, [widgetId, ...metaPropertyPath], value);
-      });
-      return draftMetaState;
-    });
-    return newMetaState;
+    return getNextMetaStateWithUpdates(state, action);
   },
   [ReduxActionTypes.SET_META_PROP]: (
     state: MetaState,
@@ -47,6 +44,20 @@ export const metaReducer = createReducer(initialState, {
         `${action.payload.widgetId}.${action.payload.propertyName}`,
         action.payload.propertyValue,
       );
+      return draftMetaState;
+    });
+
+    return nextState;
+  },
+  [ReduxActionTypes.BATCH_UPDATE_META_PROPS]: (
+    state: MetaState,
+    action: ReduxAction<BatchUpdateWidgetMetaPropertyPayload>,
+  ) => {
+    const nextState = produce(state, (draftMetaState) => {
+      const { batchMetaUpdates } = action.payload;
+      batchMetaUpdates.forEach(({ propertyName, propertyValue, widgetId }) => {
+        set(draftMetaState, `${widgetId}.${propertyName}`, propertyValue);
+      });
       return draftMetaState;
     });
 
@@ -72,6 +83,8 @@ export const metaReducer = createReducer(initialState, {
     action: ReduxAction<TableFilterPanePositionConfig>,
   ) => {
     const next = { ...state };
+    // TODO: Fix this the next time the file is edited
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let widgetMetaProps: Record<string, any> = next[action.payload.widgetId];
     if (widgetMetaProps === undefined) {
       widgetMetaProps = {
@@ -100,13 +113,39 @@ export const metaReducer = createReducer(initialState, {
     state: MetaState,
     action: ReduxAction<ResetWidgetMetaPayload>,
   ) => {
-    const { evaluatedWidget, widgetId } = action.payload;
+    const { evaluatedWidget, evaluatedWidgetConfig, widgetId } = action.payload;
 
     if (widgetId in state) {
       // only reset widgets whose meta properties were changed.
-      state = { ...state, [widgetId]: getMetaWidgetResetObj(evaluatedWidget) };
+      state = {
+        ...state,
+        [widgetId]: getMetaWidgetResetObj(
+          evaluatedWidget,
+          evaluatedWidgetConfig as WidgetEntityConfig,
+        ),
+      };
     }
     return state;
+  },
+  [ReduxActionTypes.RESET_WIDGET_META_UPDATES]: (
+    state: MetaState,
+    action: ReduxAction<{
+      evalMetaUpdates: EvalMetaUpdates;
+    }>,
+  ) => {
+    return setMetaValuesOnResetFromEval(state, action);
+  },
+  [ReduxActionTypes.RESET_WIDGETS_META_STATE]: (
+    state: MetaState,
+    action: ReduxAction<{ widgetIdsToClear: string[] }>,
+  ) => {
+    const next = { ...state };
+    for (const metaWidgetId of action.payload.widgetIdsToClear) {
+      if (metaWidgetId && next[metaWidgetId]) {
+        delete next[metaWidgetId];
+      }
+    }
+    return next;
   },
   [ReduxActionTypes.FETCH_PAGE_SUCCESS]: () => {
     return initialState;

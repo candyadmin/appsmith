@@ -1,6 +1,6 @@
 import Api from "api/Api";
-import { WidgetCardProps } from "widgets/BaseWidget";
-import { AxiosPromise } from "axios";
+import type { WidgetCardProps } from "widgets/BaseWidget";
+import type { AxiosPromise } from "axios";
 
 export interface WidgetSidebarResponse {
   cards: { [id: string]: WidgetCardProps[] };
@@ -9,7 +9,9 @@ export interface WidgetSidebarResponse {
 
 class WidgetSidebarApi extends Api {
   static url = "/widgetCards";
-  static fetchWidgetCards(): AxiosPromise<WidgetSidebarResponse> {
+  static async fetchWidgetCards(): Promise<
+    AxiosPromise<WidgetSidebarResponse>
+  > {
     return Api.get(WidgetSidebarApi.url);
   }
 }

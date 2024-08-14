@@ -16,9 +16,11 @@ import {
 } from "lodash";
 import equal from "fast-deep-equal/es6";
 
-import BaseWidget, { WidgetState } from "widgets/BaseWidget";
-import { RenderModes, WidgetType } from "constants/WidgetConstants";
+import type { WidgetState } from "widgets/BaseWidget";
+import BaseWidget from "widgets/BaseWidget";
+import { RenderModes } from "constants/WidgetConstants";
 import { EventType } from "constants/AppsmithActionConstants/ActionConstants";
+import type { RenderMenuButtonProps } from "../component/TableUtilities";
 import {
   getDefaultColumnProperties,
   getTableStyles,
@@ -26,37 +28,60 @@ import {
   renderDropdown,
   renderActions,
   renderMenuButton,
-  RenderMenuButtonProps,
   renderIconButton,
 } from "../component/TableUtilities";
 import { getAllTableColumnKeys } from "../component/TableHelpers";
 import Skeleton from "components/utils/Skeleton";
 import { noop, retryPromise } from "utils/AppsmithUtils";
 
-import { DynamicPath, getDynamicBindings } from "utils/DynamicBindingUtils";
-import { ReactTableFilter, OperatorTypes } from "../component/Constants";
-import { TableWidgetProps } from "../constants";
+import type { DynamicPath } from "utils/DynamicBindingUtils";
+import { getDynamicBindings } from "utils/DynamicBindingUtils";
+import type { ReactTableFilter } from "../component/Constants";
+import { OperatorTypes } from "../component/Constants";
+import type { TableWidgetProps } from "../constants";
 import derivedProperties from "./parseDerivedProperties";
 import { selectRowIndex, selectRowIndices } from "./utilities";
+import type { ExtraDef } from "utils/autocomplete/defCreatorUtils";
+import { generateTypeDef } from "utils/autocomplete/defCreatorUtils";
 
-import {
+import type {
   ColumnProperties,
   ReactTableColumnProps,
+} from "../component/Constants";
+import {
   ColumnTypes,
   CompactModeTypes,
   SortOrderTypes,
 } from "../component/Constants";
 import tablePropertyPaneConfig from "./propertyConfig";
-import { BatchPropertyUpdatePayload } from "actions/controlActions";
-import { IconName } from "@blueprintjs/icons";
+import type { BatchPropertyUpdatePayload } from "actions/controlActions";
+import type { IconName } from "@blueprintjs/icons";
 import { getCellProperties } from "./getTableColumns";
 import { Colors } from "constants/Colors";
-import { borderRadiusUtility, boxShadowMigration } from "widgets/WidgetUtils";
+import {
+  borderRadiusUtility,
+  boxShadowMigration,
+  DefaultAutocompleteDefinitions,
+} from "widgets/WidgetUtils";
 import { ButtonVariantTypes } from "components/constants";
-import { Stylesheet } from "entities/AppTheming";
+import type { SetterConfig, Stylesheet } from "entities/AppTheming";
+import type {
+  AnvilConfig,
+  AutocompletionDefinitions,
+} from "WidgetProvider/constants";
+import { cloneDeep, set } from "lodash";
+import { ResponsiveBehavior } from "layoutSystems/common/utils/constants";
+import { combineDynamicBindings } from "utils/DynamicBindingUtils";
+import type { WidgetProps } from "widgets/BaseWidget";
+import { BlueprintOperationTypes } from "WidgetProvider/constants";
+import type {
+  SnipingModeProperty,
+  PropertyUpdates,
+} from "WidgetProvider/constants";
+import IconSVG from "../icon.svg";
 
-const ReactTableComponent = lazy(() =>
-  retryPromise(() => import("../component")),
+const ReactTableComponent = lazy(async () =>
+  retryPromise(async () => import("../component")),
 );
 const defaultFilter = [
   {
@@ -68,6 +93,285 @@ const defaultFilter = [
 ];
 
 class TableWidget extends BaseWidget<TableWidgetProps, WidgetState> {
+  static type = "TABLE_WIDGET";
+
+  static getConfig() {
+    return {
+      name: "Table",
+      iconSVG: IconSVG,
+      needsMeta: true,
+      searchTags: ["datagrid"],
+      hideCard: true,
+      needsHeightForContent: true,
+    };
+  }
+
+  static getDefaults() {
+    return {
+      responsiveBehavior: ResponsiveBehavior.Fill,
+      rows: 28,
+      columns: 34,
+      animateLoading: true,
+      defaultSelectedRow: "0",
+      label: "Data",
+      widgetName: "Table",
+      searchKey: "",
+      textSize: "0.875rem",
+      horizontalAlignment: "LEFT",
+      verticalAlignment: "CENTER",
+      totalRecordsCount: 0,
+      defaultPageSize: 0,
+      dynamicBindingPathList: [
+        {
+          key: "primaryColumns.step.computedValue",
+        },
+        {
+          key: "primaryColumns.task.computedValue",
+        },
+        {
+          key: "primaryColumns.status.computedValue",
+        },
+        {
+          key: "primaryColumns.action.computedValue",
+        },
+        {
+          key: "primaryColumns.action.buttonColor",
+        },
+        {
+          key: "primaryColumns.action.borderRadius",
+        },
+        {
+          key: "primaryColumns.action.boxShadow",
+        },
+      ],
+      primaryColumns: {
+        step: {
+          index: 0,
+          width: 150,
+          id: "step",
+          horizontalAlignment: "LEFT",
+          verticalAlignment: "CENTER",
+          columnType: "text",
+          textSize: "0.875rem",
+          enableFilter: true,
+          enableSort: true,
+          isVisible: true,
+          isCellVisible: true,
+          isDerived: false,
+          label: "step",
+          computedValue:
+            "{{Table1.sanitizedTableData.map((currentRow) => ( currentRow.step))}}",
+        },
+        task: {
+          index: 1,
+          width: 150,
+          id: "task",
+          horizontalAlignment: "LEFT",
+          verticalAlignment: "CENTER",
+          columnType: "text",
+          textSize: "0.875rem",
+          enableFilter: true,
+          enableSort: true,
+          isVisible: true,
+          isCellVisible: true,
+          isDerived: false,
+          label: "task",
+          computedValue:
+            "{{Table1.sanitizedTableData.map((currentRow) => ( currentRow.task))}}",
+        },
+        status: {
+          index: 2,
+          width: 150,
+          id: "status",
+          horizontalAlignment: "LEFT",
+          verticalAlignment: "CENTER",
+          columnType: "text",
+          textSize: "0.875rem",
+          enableFilter: true,
+          enableSort: true,
+          isVisible: true,
+          isCellVisible: true,
+          isDerived: false,
+          label: "status",
+          computedValue:
+            "{{Table1.sanitizedTableData.map((currentRow) => ( currentRow.status))}}",
+        },
+        action: {
+          index: 3,
+          width: 150,
+          id: "action",
+          horizontalAlignment: "LEFT",
+          verticalAlignment: "CENTER",
+          columnType: "button",
+          textSize: "0.875rem",
+          enableFilter: true,
+          enableSort: true,
+          isVisible: true,
+          isCellVisible: true,
+          isDisabled: false,
+          isDerived: false,
+          label: "action",
+          onClick:
+            "{{currentRow.step === '#1' ? showAlert('Done', 'success') : currentRow.step === '#2' ? navigateTo('https://docs.appsmith.com/core-concepts/connecting-to-data-sources/querying-a-database',undefined,'NEW_WINDOW') : navigateTo('https://docs.appsmith.com/core-concepts/displaying-data-read/display-data-tables',undefined,'NEW_WINDOW')}}",
+          computedValue:
+            "{{Table1.sanitizedTableData.map((currentRow) => ( currentRow.action))}}",
+        },
+      },
+      derivedColumns: {},
+      tableData: [
+        {
+          step: "#1",
+          task: "Drop a table",
+          status: "✅",
+          action: "",
+        },
+        {
+          step: "#2",
+          task: "Create a query fetch_users with the Mock DB",
+          status: "--",
+          action: "",
+        },
+        {
+          step: "#3",
+          task: "Bind the query using => fetch_users.data",
+          status: "--",
+          action: "",
+        },
+      ],
+      columnSizeMap: {
+        task: 245,
+        step: 62,
+        status: 75,
+      },
+      columnOrder: ["step", "task", "status", "action"],
+      blueprint: {
+        operations: [
+          {
+            type: BlueprintOperationTypes.MODIFY_PROPS,
+            fn: (widget: WidgetProps & { children?: WidgetProps[] }) => {
+              const primaryColumns = cloneDeep(widget.primaryColumns);
+              const columnIds = Object.keys(primaryColumns);
+              columnIds.forEach((columnId) => {
+                set(
+                  primaryColumns,
+                  `${columnId}.computedValue`,
+                  `{{${widget.widgetName}.sanitizedTableData.map((currentRow) => ( currentRow.${columnId}))}}`,
+                );
+                set(primaryColumns, `${columnId}.labelColor`, Colors.WHITE);
+
+                Object.keys(
+                  widget.childStylesheet[primaryColumns[columnId].columnType] ||
+                    [],
+                ).map((propertyKey) => {
+                  const { jsSnippets, stringSegments } = getDynamicBindings(
+                    widget.childStylesheet[primaryColumns[columnId].columnType][
+                      propertyKey
+                    ],
+                  );
+
+                  const js = combineDynamicBindings(jsSnippets, stringSegments);
+
+                  set(
+                    primaryColumns,
+                    `${columnId}.${propertyKey}`,
+                    `{{${widget.widgetName}.sanitizedTableData.map((currentRow) => ( ${js}))}}`,
+                  );
+                });
+              });
+
+              const updatePropertyMap = [
+                {
+                  widgetId: widget.widgetId,
+                  propertyName: "primaryColumns",
+                  propertyValue: primaryColumns,
+                },
+              ];
+              return updatePropertyMap;
+            },
+          },
+        ],
+      },
+      enableClientSideSearch: true,
+      isVisibleSearch: true,
+      isVisibleFilters: true,
+      isVisibleDownload: true,
+      isVisiblePagination: true,
+      isSortable: true,
+      delimiter: ",",
+      version: 3,
+    };
+  }
+
+  static getAutoLayoutConfig() {
+    return {
+      widgetSize: [
+        {
+          viewportMinWidth: 0,
+          configuration: () => {
+            return {
+              minWidth: "280px",
+            };
+          },
+        },
+      ],
+    };
+  }
+
+  static getAnvilConfig(): AnvilConfig | null {
+    return {
+      isLargeWidget: false,
+      widgetSize: {
+        maxHeight: {},
+        maxWidth: {},
+        minHeight: {},
+        minWidth: { base: "280px" },
+      },
+    };
+  }
+
+  static getMethods() {
+    return {
+      getSnipingModeUpdates: (
+        propValueMap: SnipingModeProperty,
+      ): PropertyUpdates[] => {
+        return [
+          {
+            propertyPath: "tableData",
+            propertyValue: propValueMap.data,
+            isDynamicPropertyPath: true,
+          },
+        ];
+      },
+    };
+  }
+
+  static getAutocompleteDefinitions(): AutocompletionDefinitions {
+    return (widget: TableWidgetProps, extraDefsToDefine?: ExtraDef) => ({
+      "!doc":
+        "The Table is the hero widget of Appsmith. You can display data from an API in a table, trigger an action when a user selects a row and even work with large paginated data sets",
+      "!url": "https://docs.appsmith.com/widget-reference/table",
+      selectedRow: generateTypeDef(widget.selectedRow, extraDefsToDefine),
+      selectedRows: generateTypeDef(widget.selectedRows, extraDefsToDefine),
+      selectedRowIndices: generateTypeDef(widget.selectedRowIndices),
+      triggeredRow: generateTypeDef(widget.triggeredRow),
+      selectedRowIndex: "number",
+      tableData: generateTypeDef(widget.tableData, extraDefsToDefine),
+      filteredTableData: generateTypeDef(
+        widget.filteredTableData,
+        extraDefsToDefine,
+      ),
+      pageNo: "number",
+      pageSize: "number",
+      isVisible: DefaultAutocompleteDefinitions.isVisible,
+      searchText: "string",
+      totalRecordsCount: "number",
+      sortOrder: {
+        column: "string",
+        order: ["asc", "desc"],
+      },
+    });
+  }
+
   static getPropertyValidationMap() {
     throw new Error("Method not implemented.");
   }
@@ -100,6 +404,8 @@ class TableWidget extends BaseWidget<TableWidgetProps, WidgetState> {
     };
   }
 
+  // TODO: Fix this the next time the file is edited
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   static getMetaPropertiesMap(): Record<string, any> {
     return {
       pageNo: 1,
@@ -137,11 +443,36 @@ class TableWidget extends BaseWidget<TableWidgetProps, WidgetState> {
     };
   }
 
+  static getSetterConfig(): SetterConfig {
+    return {
+      __setters: {
+        setVisibility: {
+          path: "isVisible",
+          type: "string",
+        },
+        setSelectedRowIndex: {
+          path: "defaultSelectedRowIndex",
+          type: "number",
+          disabled: "return options.entity.multiRowSelection",
+        },
+        setSelectedRowIndices: {
+          path: "defaultSelectedRowIndices",
+          type: "array",
+          disabled: "return !options.entity.multiRowSelection",
+        },
+        setData: {
+          path: "tableData",
+          type: "array",
+        },
+      },
+    };
+  }
+
   getTableColumns = () => {
     let columns: ReactTableColumnProps[] = [];
     const hiddenColumns: ReactTableColumnProps[] = [];
     const { columnSizeMap } = this.props;
-    const { componentWidth } = this.getComponentDimensions();
+    const { componentWidth } = this.props;
     let totalColumnSizes = 0;
     const defaultColumnWidth = 150;
     const allColumnProperties = this.props.tableColumns || [];
@@ -170,6 +501,8 @@ class TableWidget extends BaseWidget<TableWidgetProps, WidgetState> {
           inputFormat: columnProperties?.inputFormat || "",
         },
         columnProperties: columnProperties,
+        // TODO: Fix this the next time the file is edited
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         Cell: (props: any) => {
           const rowIndex: number = props.cell.row.index;
           const data = this.props.filteredTableData[rowIndex];
@@ -376,8 +709,12 @@ class TableWidget extends BaseWidget<TableWidgetProps, WidgetState> {
     // For each row in the tableData (filteredTableData)
     for (let row = 0; row < tableData.length; row++) {
       // Get the row object
+      // TODO: Fix this the next time the file is edited
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const data: { [key: string]: any } = tableData[row];
       if (data) {
+        // TODO: Fix this the next time the file is edited
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const tableRow: { [key: string]: any } = {};
         // For each column in the expected columns of the table
         for (let colIndex = 0; colIndex < columns.length; colIndex++) {
@@ -435,8 +772,8 @@ class TableWidget extends BaseWidget<TableWidgetProps, WidgetState> {
                   isString(value) || isNumber(value)
                     ? value
                     : isNil(value)
-                    ? ""
-                    : JSON.stringify(value);
+                      ? ""
+                      : JSON.stringify(value);
                 tableRow[accessor] = data;
                 break;
             }
@@ -486,13 +823,13 @@ class TableWidget extends BaseWidget<TableWidgetProps, WidgetState> {
     | Record<string, ColumnProperties>
     | undefined => {
     const {
-      sanitizedTableData = [],
-      primaryColumns = {},
       columnNameMap = {},
       columnTypeMap = {},
       derivedColumns = {},
       hiddenColumns = [],
       migrated,
+      primaryColumns = {},
+      sanitizedTableData = [],
     } = this.props;
     // Bail out if the data doesn't exist.
     // This is a temporary measure,
@@ -526,10 +863,12 @@ class TableWidget extends BaseWidget<TableWidgetProps, WidgetState> {
           }
           // Update column types using types from the table before migration
           if (
-            (columnTypeMap as Record<
-              string,
-              { type: ColumnTypes; inputFormat?: string; format?: string }
-            >)[i]
+            (
+              columnTypeMap as Record<
+                string,
+                { type: ColumnTypes; inputFormat?: string; format?: string }
+              >
+            )[i]
           ) {
             columnProperties.columnType = columnTypeMap[i].type;
             columnProperties.inputFormat = columnTypeMap[i].inputFormat;
@@ -567,7 +906,7 @@ class TableWidget extends BaseWidget<TableWidgetProps, WidgetState> {
   updateColumnProperties = (
     tableColumns?: Record<string, ColumnProperties>,
   ) => {
-    const { primaryColumns = {}, derivedColumns = {} } = this.props;
+    const { derivedColumns = {}, primaryColumns = {} } = this.props;
     const { columnOrder, migrated } = this.props;
     if (tableColumns) {
       const previousColumnIds = Object.keys(primaryColumns);
@@ -801,8 +1140,8 @@ class TableWidget extends BaseWidget<TableWidgetProps, WidgetState> {
   };
 
   getSelectedRowIndices = () => {
-    let selectedRowIndices: number[] | undefined = this.props
-      .selectedRowIndices;
+    let selectedRowIndices: number[] | undefined =
+      this.props.selectedRowIndices;
     if (!this.props.multiRowSelection) selectedRowIndices = undefined;
     else {
       if (!Array.isArray(selectedRowIndices)) {
@@ -828,16 +1167,16 @@ class TableWidget extends BaseWidget<TableWidgetProps, WidgetState> {
     this.disableDrag(disable);
   };
 
-  getPageView() {
+  getWidgetView() {
     const {
-      totalRecordsCount,
       delimiter,
-      pageSize,
       filteredTableData = [],
       isVisibleDownload,
       isVisibleFilters,
       isVisiblePagination,
       isVisibleSearch,
+      pageSize,
+      totalRecordsCount,
     } = this.props;
     const tableColumns = this.getTableColumns() || [];
     const transformedData = this.transformData(filteredTableData, tableColumns);
@@ -847,7 +1186,7 @@ class TableWidget extends BaseWidget<TableWidgetProps, WidgetState> {
       isVisiblePagination ||
       isVisibleSearch;
 
-    const { componentHeight, componentWidth } = this.getComponentDimensions();
+    const { componentHeight, componentWidth } = this.props;
     return (
       <Suspense fallback={<Skeleton />}>
         <ReactTableComponent
@@ -939,6 +1278,8 @@ class TableWidget extends BaseWidget<TableWidgetProps, WidgetState> {
     }
   };
 
+  // TODO: Fix this the next time the file is edited
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   handleSearchTable = (searchKey: any) => {
     const { onSearchTextChanged } = this.props;
     this.resetSelectedRowIndex();
@@ -1121,10 +1462,6 @@ class TableWidget extends BaseWidget<TableWidgetProps, WidgetState> {
       }
     }
   };
-
-  static getWidgetType(): WidgetType {
-    return "TABLE_WIDGET";
-  }
 }
 
 export default TableWidget;

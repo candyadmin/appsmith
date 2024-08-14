@@ -7,25 +7,25 @@ import "codemirror-graphql/jump";
 import "codemirror-graphql/mode";
 
 import QueryWrapper from "./QueryWrapperWithCSS";
-import CodeEditor from "components/editorComponents/CodeEditor";
+import type { EditorTheme } from "components/editorComponents/CodeEditor/EditorConfig";
 import {
+  CodeEditorBorder,
   EditorModes,
   EditorSize,
-  EditorTheme,
   TabBehaviour,
 } from "components/editorComponents/CodeEditor/EditorConfig";
 import styled from "styled-components";
-import { Colors } from "constants/Colors";
-import { Text, TextType } from "design-system";
+import { Text, TextType } from "@appsmith/ads-old";
+import LazyCodeEditor from "components/editorComponents/LazyCodeEditor";
 
 const QueryHeader = styled.div`
   display: flex;
   width: 100%;
-  background: ${Colors.SEA_SHELL};
+  background: var(--ads-v2-color-bg-subtle);
   padding: 8px 16px;
 `;
 
-type QueryProps = {
+interface QueryProps {
   // Path to store the value in the actual data object
   dataTreePath: string;
   // Height for the editor
@@ -34,7 +34,7 @@ type QueryProps = {
   name: string;
   // Theme to be used in CodeEditor
   theme: EditorTheme;
-};
+}
 
 /**
  * Query Editor is for writing Graphql query using the Codemirror Editor which we use
@@ -52,11 +52,18 @@ function QueryEditor(props: QueryProps) {
   return (
     <QueryWrapper className="t--graphql-query-editor">
       <QueryHeader>
-        <Text color={Colors.GRAY_700} type={TextType.H6}>
+        <Text color={"var(--ads-v2-color-fg)"} type={TextType.H6}>
           Query
         </Text>
       </QueryHeader>
-      <Field component={CodeEditor} {...props} {...editorProps} />
+      <Field
+        border={CodeEditorBorder.NONE}
+        borderLess
+        component={LazyCodeEditor}
+        evaluatedPopUpLabel="Query"
+        {...props}
+        {...editorProps}
+      />
     </QueryWrapper>
   );
 }

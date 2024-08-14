@@ -1,23 +1,24 @@
 import React, { useState } from "react";
+import styled from "styled-components";
 import { find, noop } from "lodash";
-import { DropdownOption } from "components/constants";
-import { StyledDropDownContainer } from "components/propertyControls/StyledControls";
-import { StyledMenu } from "design-system";
+import type { DropdownOption } from "components/constants";
+import { StyledMenu } from "@appsmith/ads-old";
+import type { IPopoverSharedProps, Position } from "@blueprintjs/core";
 import {
   Button as BlueprintButton,
   PopoverInteractionKind,
   PopoverPosition,
-  IPopoverSharedProps,
   Popover,
   Classes,
-  Position,
   MenuItem,
 } from "@blueprintjs/core";
 import { IconNames } from "@blueprintjs/icons";
-import styled from "constants/DefaultTheme";
 import { Colors } from "constants/Colors";
-import { entityTooltipCSS } from "./Entity";
-import { useCloseMenuOnScroll } from "./hooks";
+import {
+  EntityClassNames,
+  entityTooltipCSS,
+} from "pages/Editor/Explorer/Entity";
+import { useCloseMenuOnScroll } from "ee/pages/Editor/Explorer/hooks";
 import { SIDEBAR_ID } from "constants/Explorer";
 
 export type TreeDropdownOption = DropdownOption & {
@@ -31,9 +32,11 @@ export type TreeDropdownOption = DropdownOption & {
 
 type Setter = (value: TreeDropdownOption, defaultVal?: string) => void;
 
-type TreeDropdownProps = {
+interface TreeDropdownProps {
   optionTree: TreeDropdownOption[];
   selectedValue: string;
+  // TODO: Fix this the next time the file is edited
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   getDefaults?: (value: any) => any;
   defaultText: string;
   onSelect: Setter;
@@ -51,9 +54,11 @@ type TreeDropdownProps = {
   icon?: React.ReactNode;
   editorPage?: boolean;
   menuWidth?: number;
-};
+}
 
-export const StyledPopover = styled(Popover)`
+export const StyledPopover = styled(Popover)<{
+  children?: React.ReactNode;
+}>`
   .${Classes.POPOVER_TARGET} {
     ${entityTooltipCSS}
   }
@@ -152,6 +157,7 @@ export default function TreeDropdown(props: TreeDropdownProps) {
     const isSelected =
       selectedOption.value === option.value ||
       selectedOption.type === option.value;
+
     return (
       <MenuItem
         active={isSelected}
@@ -164,7 +170,9 @@ export default function TreeDropdown(props: TreeDropdownProps) {
         onClick={
           option.children
             ? noop
-            : (e: any) => {
+            : // TODO: Fix this the next time the file is edited
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              (e: any) => {
                 handleSelect(option);
                 e.stopPropagation();
               }
@@ -173,6 +181,8 @@ export default function TreeDropdown(props: TreeDropdownProps) {
           minimal: true,
           interactionKind: PopoverInteractionKind.CLICK,
           position: PopoverPosition.RIGHT,
+          // TODO: Fix this the next time the file is edited
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           targetProps: { onClick: (e: any) => e.stopPropagation() },
         }}
         text={option.label}
@@ -183,13 +193,18 @@ export default function TreeDropdown(props: TreeDropdownProps) {
   }
 
   const list = optionTree.map(renderTreeOption);
+
   const menuItems = (
-    <StyledMenu className="t--entity-context-menu" width={menuWidth}>
+    <StyledMenu
+      className={`t--entity-context-menu ${EntityClassNames.CONTEXT_MENU_CONTENT}`}
+      width={menuWidth}
+    >
       {list}
     </StyledMenu>
   );
+
   const defaultToggle = (
-    <StyledDropDownContainer>
+    <div className="w-full h-full">
       <BlueprintButton
         className={`t--open-dropdown-${defaultText.split(" ").join("-")} ${
           selectedLabelModifier ? "code-highlight" : ""
@@ -201,8 +216,9 @@ export default function TreeDropdown(props: TreeDropdownProps) {
             : selectedOption.label
         }
       />
-    </StyledDropDownContainer>
+    </div>
   );
+
   return (
     <StyledPopover
       boundary="viewport"
@@ -218,6 +234,8 @@ export default function TreeDropdown(props: TreeDropdownProps) {
       }}
       position={props.position || PopoverPosition.RIGHT_TOP}
       targetProps={{
+        // TODO: Fix this the next time the file is edited
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         onClick: (e: any) => {
           setIsOpen(true);
           e.stopPropagation();

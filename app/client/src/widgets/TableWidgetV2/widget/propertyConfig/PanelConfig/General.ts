@@ -1,15 +1,18 @@
 import { ValidationTypes } from "constants/WidgetValidation";
-import { ColumnTypes, TableWidgetProps } from "widgets/TableWidgetV2/constants";
+import type { TableWidgetProps } from "widgets/TableWidgetV2/constants";
+import { ColumnTypes } from "widgets/TableWidgetV2/constants";
 import { get } from "lodash";
 import {
   getBasePropertyPath,
   hideByColumnType,
   updateColumnLevelEditability,
+  updateColumnOrderWhenFrozen,
   updateInlineEditingOptionDropdownVisibilityHook,
 } from "../../propertyUtils";
 import { isColumnTypeEditable } from "../../utilities";
 import { composePropertyUpdateHook } from "widgets/WidgetUtils";
 import { ButtonVariantTypes } from "components/constants";
+import { StickyType } from "widgets/TableWidgetV2/component/Constants";
 
 export default {
   sectionName: "General",
@@ -80,7 +83,7 @@ export default {
     {
       propertyName: "allowCellWrapping",
       dependencies: ["primaryColumns", "columnType"],
-      label: "Cell Wrapping",
+      label: "Cell wrapping",
       helpText: "Allows content of the cell to be wrapped",
       defaultValue: false,
       controlType: "SWITCH",
@@ -99,7 +102,6 @@ export default {
           ColumnTypes.TEXT,
           ColumnTypes.NUMBER,
           ColumnTypes.URL,
-          ColumnTypes.DATE,
         ]);
       },
     },
@@ -137,6 +139,33 @@ export default {
         return !isColumnTypeEditable(columnType) || isDerived;
       },
     },
+    {
+      propertyName: "sticky",
+      helpText:
+        "Choose column that needs to be frozen left or right of the table",
+      controlType: "ICON_TABS",
+      defaultValue: StickyType.NONE,
+      label: "Column freeze",
+      fullWidth: true,
+      isBindProperty: true,
+      isTriggerProperty: false,
+      dependencies: ["primaryColumns", "columnOrder"],
+      options: [
+        {
+          startIcon: "contract-left-line",
+          value: StickyType.LEFT,
+        },
+        {
+          startIcon: "column-freeze",
+          value: StickyType.NONE,
+        },
+        {
+          startIcon: "contract-right-line",
+          value: StickyType.RIGHT,
+        },
+      ],
+      updateHook: updateColumnOrderWhenFrozen,
+    },
   ],
 };
 
@@ -145,7 +174,7 @@ export const GeneralStyle = {
   children: [
     {
       propertyName: "buttonVariant",
-      label: "Button Variant",
+      label: "Button variant",
       controlType: "ICON_TABS",
       fullWidth: true,
       customJSControl: "TABLE_COMPUTE_VALUE",
@@ -192,7 +221,7 @@ export const GeneralStyle = {
     },
     {
       propertyName: "menuVariant",
-      label: "Button Variant",
+      label: "Button variant",
       controlType: "ICON_TABS",
       fullWidth: true,
       customJSControl: "TABLE_COMPUTE_VALUE",
@@ -234,7 +263,6 @@ export const GeneralStyle = {
         },
       },
     },
-
     {
       propertyName: "imageSize",
       dependencies: ["primaryColumns", "columnType"],

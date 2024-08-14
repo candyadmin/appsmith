@@ -1,15 +1,18 @@
 import React, { memo } from "react";
-import { Icon, IconSize } from "design-system";
+import { Icon, IconSize } from "@design-system/widgets-old";
 import { Button } from "@blueprintjs/core";
 import { Colors } from "constants/Colors";
 
 import { isEmptyOrNill } from "../../../utils/helpers";
 import { StyledDiv } from "./index.styled";
+import { CLASSNAMES } from "../constants";
 
 export interface SelectButtonProps {
   disabled?: boolean;
   displayText?: string;
   handleCancelClick?: (event: React.MouseEvent<Element, MouseEvent>) => void;
+  // TODO: Fix this the next time the file is edited
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   spanRef?: any;
   togglePopoverVisibility: () => void;
   tooltipText?: string;
@@ -31,7 +34,7 @@ function SelectButton(props: SelectButtonProps) {
 
   return (
     <Button
-      className="select-button"
+      className={CLASSNAMES.selectButton}
       data-testid="selectbutton.btn.main"
       disabled={disabled}
       onClick={togglePopoverVisibility}

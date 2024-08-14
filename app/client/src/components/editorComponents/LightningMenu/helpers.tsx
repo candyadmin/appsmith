@@ -1,11 +1,10 @@
 import React from "react";
 import { toUpper, get } from "lodash";
-import { Action } from "entities/Action";
+import type { Action } from "entities/Action";
 import { Directions } from "utils/helpers";
-import { WidgetProps } from "widgets/BaseWidget";
-import CustomizedDropdown, {
-  CustomizedDropdownOption,
-} from "pages/common/CustomizedDropdown";
+import type { WidgetProps } from "widgets/BaseWidget";
+import type { CustomizedDropdownOption } from "pages/common/CustomizedDropdown";
+import CustomizedDropdown from "pages/common/CustomizedDropdown";
 import Button from "components/editorComponents/Button";
 import {
   createNewApiAction,
@@ -20,9 +19,9 @@ import {
   LIGHTNING_MENU_QUERY_CREATE_NEW,
   LIGHTNING_MENU_API_CREATE_NEW,
   createMessage,
-} from "@appsmith/constants/messages";
-import { Skin } from "constants/DefaultTheme";
-import { ReduxAction } from "@appsmith/constants/ReduxActionConstants";
+} from "ee/constants/messages";
+import type { Skin } from "constants/DefaultTheme";
+import type { ReduxAction } from "ee/constants/ReduxActionConstants";
 
 export const getApiOptions = (
   skin: Skin,

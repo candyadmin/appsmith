@@ -1,25 +1,26 @@
-import { ValidationConfig } from "constants/PropertyControlConstants";
+import type { ValidationConfig } from "constants/PropertyControlConstants";
 import { Severity } from "entities/AppsmithConsole";
-import { DataTree, DataTreeWidget } from "entities/DataTree/dataTreeFactory";
-import { get, isUndefined, set } from "lodash";
+import type {
+  WidgetEntity,
+  WidgetEntityConfig,
+} from "ee/entities/DataTree/types";
+import type { ConfigTree } from "entities/DataTree/dataTreeTypes";
+import type { EvaluationError } from "utils/DynamicBindingUtils";
 import {
-  EvaluationError,
-  getEvalErrorPath,
-  getEvalValuePath,
-  isPathADynamicTrigger,
+  isPathDynamicTrigger,
   PropertyEvaluationErrorType,
 } from "utils/DynamicBindingUtils";
 import {
   addErrorToEntityProperty,
   getEntityNameAndPropertyPath,
-  isWidget,
   resetValidationErrorsForEntityProperty,
-} from "workers/Evaluation/evaluationUtils";
+} from "ee/workers/Evaluation/evaluationUtils";
 import { validate } from "workers/Evaluation/validations";
-import { EvalProps } from ".";
+import type { EvalProps } from ".";
+import type { ValidationResponse } from "constants/WidgetValidation";
 
 export function validateAndParseWidgetProperty({
-  currentTree,
+  configTree,
   evalPropertyValue,
   evalProps,
   fullPropertyPath,
@@ -27,42 +28,40 @@ export function validateAndParseWidgetProperty({
   widget,
 }: {
   fullPropertyPath: string;
-  widget: DataTreeWidget;
-  currentTree: DataTree;
+  widget: WidgetEntity;
+  configTree: ConfigTree;
   evalPropertyValue: unknown;
   unEvalPropertyValue: string;
   evalProps: EvalProps;
 }): unknown {
   const { propertyPath } = getEntityNameAndPropertyPath(fullPropertyPath);
-  if (isPathADynamicTrigger(widget, propertyPath)) {
+
+  if (isPathDynamicTrigger(widget, propertyPath)) {
     // TODO find a way to validate triggers
     return unEvalPropertyValue;
   }
-  const validation = widget.validationPaths[propertyPath];
+  const widgetConfig = configTree[widget.widgetName] as WidgetEntityConfig;
+  const validation = widgetConfig.validationPaths[propertyPath];
 
-  const { isValid, messages, parsed, transformed } = validateWidgetProperty(
+  const { isValid, messages, parsed } = validateWidgetProperty(
     validation,
     evalPropertyValue,
     widget,
     propertyPath,
   );
 
-  let evaluatedValue;
-  if (isValid) {
-    evaluatedValue = parsed;
-    // remove validation errors is already present
-    resetValidationErrorsForEntityProperty({
-      evalProps,
-      fullPropertyPath,
-    });
-  } else {
-    evaluatedValue = isUndefined(transformed) ? evalPropertyValue : transformed;
+  // remove already present validation errors
+  resetValidationErrorsForEntityProperty({
+    evalProps,
+    fullPropertyPath,
+  });
 
+  if (!isValid) {
     const evalErrors: EvaluationError[] =
       messages?.map((message) => {
         return {
           raw: unEvalPropertyValue,
-          errorMessage: message || "",
+          errorMessage: message || {},
           errorType: PropertyEvaluationErrorType.VALIDATION,
           severity: Severity.ERROR,
         };
@@ -72,17 +71,9 @@ export function validateAndParseWidgetProperty({
       errors: evalErrors,
       evalProps,
       fullPropertyPath,
-      dataTree: currentTree,
+      configTree,
     });
   }
-  set(
-    evalProps,
-    getEvalValuePath(fullPropertyPath, {
-      isPopulated: false,
-      fullPath: true,
-    }),
-    evaluatedValue,
-  );
 
   return parsed;
 }
@@ -105,7 +96,7 @@ export function validateWidgetProperty(
 export function validateActionProperty(
   config: ValidationConfig,
   value: unknown,
-) {
+): ValidationResponse {
   if (!config) {
     return {
       isValid: true,
@@ -113,63 +104,4 @@ export function validateActionProperty(
     };
   }
   return validate(config, value, {}, "");
-}
-
-export function getValidatedTree(
-  tree: DataTree,
-  option: { evalProps: EvalProps },
-) {
-  const { evalProps } = option;
-  return Object.keys(tree).reduce((tree, entityKey: string) => {
-    const parsedEntity = tree[entityKey];
-    if (!isWidget(parsedEntity)) {
-      return tree;
-    }
-
-    Object.entries(parsedEntity.validationPaths).forEach(
-      ([property, validation]) => {
-        const value = get(parsedEntity, property);
-        // Pass it through parse
-        const {
-          isValid,
-          messages,
-          parsed,
-          transformed,
-        } = validateWidgetProperty(validation, value, parsedEntity, property);
-        set(parsedEntity, property, parsed);
-        const evaluatedValue = isValid
-          ? parsed
-          : isUndefined(transformed)
-          ? value
-          : transformed;
-        set(
-          evalProps,
-          getEvalValuePath(`${entityKey}.${property}`, {
-            isPopulated: false,
-            fullPath: true,
-          }),
-          evaluatedValue,
-        );
-        if (!isValid) {
-          const evalErrors: EvaluationError[] =
-            messages?.map((message) => ({
-              errorType: PropertyEvaluationErrorType.VALIDATION,
-              errorMessage: message,
-              severity: Severity.ERROR,
-              raw: value,
-            })) ?? [];
-          addErrorToEntityProperty({
-            errors: evalErrors,
-            evalProps,
-            fullPropertyPath: getEvalErrorPath(`${entityKey}.${property}`, {
-              isPopulated: false,
-              fullPath: true,
-            }),
-            dataTree: tree,
-          });
-        }
-      },
-    );
-    return { ...tree, [entityKey]: parsedEntity };
-  }, tree);
 }

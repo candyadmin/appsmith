@@ -1,45 +1,39 @@
-import React from "react";
-import {
+import type {
   ChangeSelectedAppThemeAction,
   DeleteAppThemeAction,
   FetchAppThemesAction,
   FetchSelectedAppThemeAction,
-  SaveAppThemeAction,
-  updateisBetaCardShownAction,
   UpdateSelectedAppThemeAction,
 } from "actions/appThemingActions";
+import { updateisBetaCardShownAction } from "actions/appThemingActions";
+import type { ReduxAction } from "ee/constants/ReduxActionConstants";
 import {
-  ReduxAction,
   ReduxActionErrorTypes,
   ReduxActionTypes,
-} from "@appsmith/constants/ReduxActionConstants";
+} from "ee/constants/ReduxActionConstants";
 import ThemingApi from "api/AppThemingApi";
-import { all, takeLatest, put, select } from "redux-saga/effects";
-import { Toaster, Variant } from "design-system";
+import { all, takeLatest, put, select, call } from "redux-saga/effects";
+import { toast } from "@appsmith/ads";
 import {
   CHANGE_APP_THEME,
   createMessage,
   DELETE_APP_THEME,
-  SAVE_APP_THEME,
   SET_DEFAULT_SELECTED_THEME,
-} from "@appsmith/constants/messages";
-import { ENTITY_TYPE } from "entities/AppsmithConsole";
-import { undoAction, updateReplayEntity } from "actions/pageActions";
-import { getCanvasWidgets } from "selectors/entitiesSelector";
-import store from "store";
-import { getAppMode } from "selectors/applicationSelectors";
-import { APP_MODE } from "entities/App";
+} from "ee/constants/messages";
+import { ENTITY_TYPE } from "ee/entities/AppsmithConsole/utils";
+import { updateReplayEntity } from "actions/pageActions";
+import { getCanvasWidgets } from "ee/selectors/entitiesSelector";
+import { getAppMode } from "ee/selectors/applicationSelectors";
+import type { APP_MODE } from "entities/App";
 import { getCurrentUser } from "selectors/usersSelectors";
-import { User } from "constants/userConstants";
+import type { User } from "constants/userConstants";
 import { getBetaFlag, setBetaFlag, STORAGE_KEYS } from "utils/storage";
-import {
-  batchUpdateMultipleWidgetProperties,
-  UpdateWidgetPropertyPayload,
-} from "actions/controlActions";
+import type { UpdateWidgetPropertyPayload } from "actions/controlActions";
+import { batchUpdateMultipleWidgetProperties } from "actions/controlActions";
 import { getPropertiesToUpdateForReset } from "entities/AppTheming/utils";
-import { ApiResponse } from "api/ApiResponses";
-import { AppTheme } from "entities/AppTheming";
-import { CanvasWidgetsReduxState } from "reducers/entityReducers/canvasWidgetsReducer";
+import type { ApiResponse } from "api/ApiResponses";
+import type { AppTheme } from "entities/AppTheming";
+import type { CanvasWidgetsReduxState } from "reducers/entityReducers/canvasWidgetsReducer";
 import {
   getCurrentApplicationId,
   selectApplicationVersion,
@@ -47,9 +41,10 @@ import {
 import { find } from "lodash";
 import * as Sentry from "@sentry/react";
 import { Severity } from "@sentry/react";
-import { getAllPageIds } from "./selectors";
-import { SagaIterator } from "@redux-saga/types";
-import { AxiosPromise } from "axios";
+import { getAllPageIdentities } from "./selectors";
+import type { SagaIterator } from "@redux-saga/types";
+import type { AxiosPromise } from "axios";
+import { getFromServerWhenNoPrefetchedResult } from "./helper";
 
 /**
  * init app theming
@@ -77,9 +72,12 @@ export function* initAppTheming() {
 // eslint-disable-next-line
 export function* fetchAppThemes(action: ReduxAction<FetchAppThemesAction>) {
   try {
-    const { applicationId } = action.payload;
-    const response: ApiResponse<AppTheme> = yield ThemingApi.fetchThemes(
-      applicationId,
+    const { applicationId, themes } = action.payload;
+
+    const response: ApiResponse<AppTheme> = yield call(
+      getFromServerWhenNoPrefetchedResult,
+      themes,
+      async () => ThemingApi.fetchThemes(applicationId),
     );
 
     yield put({
@@ -104,18 +102,20 @@ export function* fetchAppSelectedTheme(
   // eslint-disable-next-line
   action: ReduxAction<FetchSelectedAppThemeAction>,
 ): SagaIterator | AxiosPromise {
-  const { applicationId } = action.payload;
+  const { applicationId, currentTheme } = action.payload;
   const mode: APP_MODE = yield select(getAppMode);
 
-  const pageIds = yield select(getAllPageIds);
+  const pageIdentities: { pageId: string; basePageId: string }[] =
+    yield select(getAllPageIdentities);
   const userDetails = yield select(getCurrentUser);
   const applicationVersion = yield select(selectApplicationVersion);
   try {
-    // eslint-disable-next-line
-    const response: ApiResponse<AppTheme[]> = yield ThemingApi.fetchSelected(
-      applicationId,
-      mode,
+    const response: ApiResponse<AppTheme[]> = yield call(
+      getFromServerWhenNoPrefetchedResult,
+      currentTheme,
+      async () => ThemingApi.fetchSelected(applicationId, mode),
     );
+
     if (response?.data) {
       yield put({
         type: ReduxActionTypes.FETCH_SELECTED_APP_THEME_SUCCESS,
@@ -125,7 +125,7 @@ export function* fetchAppSelectedTheme(
       Sentry.captureException("Unable to fetch the selected theme", {
         level: Severity.Critical,
         extra: {
-          pageIds,
+          pageIdentities,
           applicationId,
           applicationVersion,
           userDetails,
@@ -203,12 +203,8 @@ export function* changeSelectedTheme(
     });
 
     // shows toast
-    Toaster.show({
-      text: createMessage(CHANGE_APP_THEME, theme.displayName),
-      variant: Variant.success,
-      actionElement: (
-        <span onClick={() => store.dispatch(undoAction())}>Undo</span>
-      ),
+    toast.show(createMessage(CHANGE_APP_THEME, theme.displayName), {
+      kind: "success",
     });
 
     if (shouldReplay) {
@@ -223,38 +219,6 @@ export function* changeSelectedTheme(
   } catch (error) {
     yield put({
       type: ReduxActionErrorTypes.UPDATE_SELECTED_APP_THEME_ERROR,
-      payload: { error },
-    });
-  }
-}
-
-/**
- * save and create new theme from  selected theme
- *
- * @param action
- */
-export function* saveSelectedTheme(action: ReduxAction<SaveAppThemeAction>) {
-  const { applicationId, name } = action.payload;
-
-  try {
-    const response: ApiResponse<AppTheme[]> = yield ThemingApi.saveTheme(
-      applicationId,
-      { name },
-    );
-
-    yield put({
-      type: ReduxActionTypes.SAVE_APP_THEME_SUCCESS,
-      payload: response.data,
-    });
-
-    // shows toast
-    Toaster.show({
-      text: createMessage(SAVE_APP_THEME, name),
-      variant: Variant.success,
-    });
-  } catch (error) {
-    yield put({
-      type: ReduxActionErrorTypes.SAVE_APP_THEME_ERROR,
       payload: { error },
     });
   }
@@ -277,9 +241,8 @@ export function* deleteTheme(action: ReduxAction<DeleteAppThemeAction>) {
     });
 
     // shows toast
-    Toaster.show({
-      text: createMessage(DELETE_APP_THEME, name),
-      variant: Variant.success,
+    toast.show(createMessage(DELETE_APP_THEME, name), {
+      kind: "success",
     });
   } catch (error) {
     yield put({
@@ -304,12 +267,10 @@ function* closeisBetaCardShown() {
  */
 function* resetTheme() {
   try {
-    const canvasWidgets: CanvasWidgetsReduxState = yield select(
-      getCanvasWidgets,
-    );
-    const propertiesToUpdate: UpdateWidgetPropertyPayload[] = getPropertiesToUpdateForReset(
-      canvasWidgets,
-    );
+    const canvasWidgets: CanvasWidgetsReduxState =
+      yield select(getCanvasWidgets);
+    const propertiesToUpdate: UpdateWidgetPropertyPayload[] =
+      getPropertiesToUpdateForReset(canvasWidgets);
 
     if (propertiesToUpdate.length) {
       yield put(batchUpdateMultipleWidgetProperties(propertiesToUpdate));
@@ -324,9 +285,8 @@ function* setDefaultSelectedThemeOnError() {
   const applicationId: string = yield select(getCurrentApplicationId);
   try {
     // Fetch all system themes
-    const response: ApiResponse<AppTheme[]> = yield ThemingApi.fetchThemes(
-      applicationId,
-    );
+    const response: ApiResponse<AppTheme[]> =
+      yield ThemingApi.fetchThemes(applicationId);
 
     // Gets default theme
     const theme = find(response.data, { name: "Default" });
@@ -339,9 +299,8 @@ function* setDefaultSelectedThemeOnError() {
         payload: theme,
       });
       // shows toast
-      Toaster.show({
-        text: createMessage(SET_DEFAULT_SELECTED_THEME, theme.displayName),
-        variant: Variant.warning,
+      toast.show(createMessage(SET_DEFAULT_SELECTED_THEME, theme.displayName), {
+        kind: "warning",
       });
     }
   } catch (error) {
@@ -368,7 +327,6 @@ export default function* appThemingSaga() {
       ReduxActionTypes.CHANGE_SELECTED_APP_THEME_INIT,
       changeSelectedTheme,
     ),
-    takeLatest(ReduxActionTypes.SAVE_APP_THEME_INIT, saveSelectedTheme),
     takeLatest(ReduxActionTypes.DELETE_APP_THEME_INIT, deleteTheme),
     takeLatest(ReduxActionTypes.CLOSE_BETA_CARD_SHOWN, closeisBetaCardShown),
     takeLatest(

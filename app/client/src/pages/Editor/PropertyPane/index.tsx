@@ -1,8 +1,8 @@
 import React, { useRef } from "react";
+import styled from "styled-components";
 import { useSelector } from "react-redux";
 import { PanelStack, Classes } from "@blueprintjs/core";
 
-import styled from "constants/DefaultTheme";
 import { get } from "lodash";
 import { getSelectedWidgets } from "selectors/ui";
 import PropertyPaneView from "./PropertyPaneView";
@@ -40,6 +40,8 @@ function PropertyPane() {
     <div
       className={"t--propertypane overflow-y-auto h-full"}
       data-testid={"t--propertypane"}
+      // TODO: Fix this the next time the file is edited
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       onClick={(e: any) => {
         e.stopPropagation();
       }}

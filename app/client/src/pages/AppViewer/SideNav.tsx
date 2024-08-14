@@ -1,15 +1,16 @@
 import React from "react";
 import styled from "styled-components";
 import { Menu, Button } from "@blueprintjs/core";
-import SideNavItem, { SideNavItemProps } from "./SideNavItem";
+import type { SideNavItemProps } from "./SideNavItem";
+import SideNavItem from "./SideNavItem";
 import LetterIcon from "components/editorComponents/LetterIcon";
-type SideNavProps = {
+interface SideNavProps {
   items?: SideNavItemProps[];
   active?: string;
   headeroffset?: number;
   open: boolean;
   toggleCollapse: (open: boolean) => void;
-};
+}
 
 /* eslint-disable no-unexpected-multiline */
 

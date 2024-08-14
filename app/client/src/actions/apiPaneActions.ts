@@ -1,9 +1,8 @@
-import {
-  ReduxAction,
-  ReduxActionTypes,
-} from "@appsmith/constants/ReduxActionConstants";
-import { EventLocation } from "utils/AnalyticsUtil";
-import { SlashCommandPayload } from "entities/Action";
+import type { ReduxAction } from "ee/constants/ReduxActionConstants";
+import { ReduxActionTypes } from "ee/constants/ReduxActionConstants";
+import type { EventLocation } from "ee/utils/analyticsUtilTypes";
+import type { SlashCommandPayload } from "entities/Action";
+import type { ApiPaneDebuggerState } from "ee/reducers/uiReducers/apiPaneReducer";
 
 export const changeApi = (
   id: string,
@@ -13,40 +12,6 @@ export const changeApi = (
   return {
     type: ReduxActionTypes.API_PANE_CHANGE_API,
     payload: { id, isSaas, newApi },
-  };
-};
-
-export const initApiPane = (urlId?: string): ReduxAction<{ id?: string }> => {
-  return {
-    type: ReduxActionTypes.INIT_API_PANE,
-    payload: { id: urlId },
-  };
-};
-
-export const setCurrentCategory = (
-  category: string,
-): ReduxAction<{ category: string }> => {
-  return {
-    type: ReduxActionTypes.SET_CURRENT_CATEGORY,
-    payload: { category },
-  };
-};
-
-export const setLastUsedEditorPage = (
-  path: string,
-): ReduxAction<{ path: string }> => {
-  return {
-    type: ReduxActionTypes.SET_LAST_USED_EDITOR_PAGE,
-    payload: { path },
-  };
-};
-
-export const setLastSelectedPage = (
-  selectedPageId: string,
-): ReduxAction<{ selectedPageId: string }> => {
-  return {
-    type: ReduxActionTypes.SET_LAST_SELECTED_PAGE_PAGE,
-    payload: { selectedPageId },
   };
 };
 
@@ -63,13 +28,15 @@ export const createNewQueryAction = (
   pageId: string,
   from: EventLocation,
   datasourceId: string,
+  queryDefaultTableName?: string,
 ): ReduxAction<{
   pageId: string;
   from: EventLocation;
   datasourceId: string;
+  queryDefaultTableName?: string;
 }> => ({
   type: ReduxActionTypes.CREATE_NEW_QUERY_ACTION,
-  payload: { pageId, from, datasourceId },
+  payload: { pageId, from, datasourceId, queryDefaultTableName },
 });
 
 export const updateBodyContentType = (
@@ -78,17 +45,6 @@ export const updateBodyContentType = (
 ): ReduxAction<{ title: string; apiId: string }> => ({
   type: ReduxActionTypes.UPDATE_API_ACTION_BODY_CONTENT_TYPE,
   payload: { title, apiId },
-});
-
-export const redirectToNewIntegrations = (
-  pageId: string,
-  params?: any,
-): ReduxAction<{
-  pageId: string;
-  params: any;
-}> => ({
-  type: ReduxActionTypes.REDIRECT_TO_NEW_INTEGRATIONS,
-  payload: { pageId, params },
 });
 
 export const executeCommandAction = (payload: SlashCommandPayload) => ({
@@ -103,23 +59,16 @@ export const setApiPaneConfigSelectedTabIndex: (
   payload: { selectedTabIndex: payload },
 });
 
-export const setApiPaneResponseSelectedTab: (
+export const setApiRightPaneSelectedTab: (
   payload: string,
 ) => ReduxAction<{ selectedTab: string }> = (payload: string) => ({
-  type: ReduxActionTypes.SET_API_PANE_RESPONSE_SELECTED_TAB,
-  payload: { selectedTab: payload },
-});
-
-export const setApiPaneResponsePaneHeight: (
-  payload: number,
-) => ReduxAction<{ height: number }> = (payload: number) => ({
-  type: ReduxActionTypes.SET_API_PANE_RESPONSE_PANE_HEIGHT,
-  payload: { height: payload },
-});
-
-export const setApiRightPaneSelectedTab: (
-  payload: number,
-) => ReduxAction<{ selectedTab: number }> = (payload: number) => ({
   type: ReduxActionTypes.SET_API_RIGHT_PANE_SELECTED_TAB,
   payload: { selectedTab: payload },
+});
+
+export const setApiPaneDebuggerState = (
+  payload: Partial<ApiPaneDebuggerState>,
+) => ({
+  type: ReduxActionTypes.SET_API_PANE_DEBUGGER_STATE,
+  payload,
 });

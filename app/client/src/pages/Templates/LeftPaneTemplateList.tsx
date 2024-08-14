@@ -3,13 +3,12 @@ import { useSelector } from "react-redux";
 import { useParams } from "react-router";
 import { getTemplatesSelector } from "selectors/templatesSelectors";
 import styled from "styled-components";
-import { Classes, Text, TextType } from "design-system";
+import { Classes, Text, TextType } from "@appsmith/ads-old";
 import history from "utils/history";
-import LeftPaneBottomSection from "pages/Home/LeftPaneBottomSection";
 import { thinScrollbar } from "constants/DefaultTheme";
 import { Colors } from "constants/Colors";
-import { createMessage, TEMPLATES } from "@appsmith/constants/messages";
-import { templateIdUrl } from "RouteBuilder";
+import { createMessage, TEMPLATES } from "ee/constants/messages";
+import { templateIdUrl } from "ee/RouteBuilder";
 
 const Wrapper = styled.div`
   width: ${(props) => props.theme.homePage.sidebar}px;
@@ -96,7 +95,6 @@ function LeftPaneTemplateList() {
             })}
           </div>
         </TempelateListWrapper>
-        <LeftPaneBottomSection />
       </SecondWrapper>
     </Wrapper>
   );

@@ -1,17 +1,19 @@
 import React from "react";
-import BaseControl, { ControlProps } from "./BaseControl";
+import type { ControlProps } from "./BaseControl";
+import BaseControl from "./BaseControl";
 import { StyledDynamicInput } from "./StyledControls";
-import CodeEditor, {
-  CodeEditorExpected,
-} from "components/editorComponents/CodeEditor";
+import type { CodeEditorExpected } from "components/editorComponents/CodeEditor";
+import type { EditorTheme } from "components/editorComponents/CodeEditor/EditorConfig";
 import {
   EditorModes,
   EditorSize,
-  EditorTheme,
   TabBehaviour,
 } from "components/editorComponents/CodeEditor/EditorConfig";
 import { getDynamicBindings, isDynamicValue } from "utils/DynamicBindingUtils";
 import { isString } from "utils/helpers";
+import LazyCodeEditor from "components/editorComponents/LazyCodeEditor";
+import { bindingHintHelper } from "components/editorComponents/CodeEditor/hintHelpers";
+import { slashCommandHintHelper } from "components/editorComponents/CodeEditor/commandsHelper";
 
 export const getBindingTemplate = (widgetName: string) => {
   const prefixTemplate = `{{ ((options, serverSideFiltering) => ( `;
@@ -45,16 +47,18 @@ export const JSToString = (js: string): string => {
     .join("");
 };
 
-type InputTextProp = {
+interface InputTextProp {
   label: string;
   value: string;
   onChange: (event: React.ChangeEvent<HTMLTextAreaElement> | string) => void;
+  // TODO: Fix this the next time the file is edited
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   evaluatedValue?: any;
   expected?: CodeEditorExpected;
   placeholder?: string;
   dataTreePath?: string;
   theme: EditorTheme;
-};
+}
 
 function InputText(props: InputTextProp) {
   const {
@@ -68,16 +72,19 @@ function InputText(props: InputTextProp) {
   } = props;
   return (
     <StyledDynamicInput>
-      <CodeEditor
+      <LazyCodeEditor
+        AIAssisted
         dataTreePath={dataTreePath}
         evaluatedValue={evaluatedValue}
         expected={expected}
+        hinting={[bindingHintHelper, slashCommandHintHelper]}
         input={{
           value: value,
           onChange: onChange,
         }}
         mode={EditorModes.TEXT_WITH_BINDING}
         placeholder={placeholder}
+        positionCursorInsideBinding
         size={EditorSize.EXTENDED}
         tabBehaviour={TabBehaviour.INDENT}
         theme={theme}
@@ -86,9 +93,7 @@ function InputText(props: InputTextProp) {
   );
 }
 
-class SelectDefaultValueControl extends BaseControl<
-  SelectDefaultValueControlProps
-> {
+class SelectDefaultValueControl extends BaseControl<SelectDefaultValueControlProps> {
   render() {
     const {
       dataTreePath,

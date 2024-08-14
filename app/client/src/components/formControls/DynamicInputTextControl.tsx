@@ -1,10 +1,11 @@
 import React from "react";
-import BaseControl, { ControlProps } from "./BaseControl";
-import { ControlType } from "constants/PropertyControlConstants";
+import type { ControlProps } from "./BaseControl";
+import BaseControl from "./BaseControl";
+import type { ControlType } from "constants/PropertyControlConstants";
 import DynamicTextField from "components/editorComponents/form/fields/DynamicTextField";
-import { AppState } from "@appsmith/reducers";
+import type { AppState } from "ee/reducers";
 import { formValueSelector } from "redux-form";
-import { QUERY_EDITOR_FORM_NAME } from "@appsmith/constants/forms";
+import { QUERY_EDITOR_FORM_NAME } from "ee/constants/forms";
 import { connect } from "react-redux";
 import { actionPathFromName } from "components/formControls/utils";
 import {
@@ -13,7 +14,6 @@ import {
 } from "components/editorComponents/CodeEditor/EditorConfig";
 import styled from "styled-components";
 import _ from "lodash";
-import { Colors } from "constants/Colors";
 
 // Enum for the different types of input fields
 export enum INPUT_TEXT_INPUT_TYPES {
@@ -25,13 +25,17 @@ export enum INPUT_TEXT_INPUT_TYPES {
 
 const StyledDynamicTextField = styled(DynamicTextField)`
   .CodeEditorTarget .CodeMirror.CodeMirror-wrap {
-    background-color: ${Colors.WHITE};
+    background-color: var(--ads-v2-color-bg);
   }
   .CodeEditorTarget .CodeMirror.CodeMirror-wrap:hover {
-    background-color: ${Colors.ALABASTER_ALT};
+    background-color: var(--ads-v2-color-bg);
+    border-color: var(--ads-v2-color-border-emphasis);
   }
   &&& .t--code-editor-wrapper {
     border: none;
+  }
+  .CodeEditorTarget {
+    border-radius: var(--ads-v2-border-radius);
   }
 `;
 
@@ -43,6 +47,8 @@ export function InputText(props: {
   name: string;
   actionName: string;
   inputType?: INPUT_TEXT_INPUT_TYPES;
+  // TODO: Fix this the next time the file is edited
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   customStyles?: any;
   disabled?: boolean;
   showLineNumbers?: boolean;
@@ -67,7 +73,7 @@ export function InputText(props: {
     };
   }
 
-  let customStyle = { width: "280px", minHeight: "38px" };
+  let customStyle = { width: "270px", minHeight: "36px" };
   if (!!props.customStyles && _.isEmpty(props.customStyles) === false) {
     customStyle = { ...props.customStyles };
     if ("width" in props.customStyles) {
@@ -83,6 +89,7 @@ export function InputText(props: {
       <StyledDynamicTextField
         dataTreePath={dataTreePath}
         disabled={props.disabled}
+        evaluatedPopUpLabel={props?.label || ""}
         name={name}
         placeholder={placeholder}
         showLightningMenu={false}

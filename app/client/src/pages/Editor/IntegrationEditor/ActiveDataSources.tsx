@@ -1,18 +1,21 @@
 import React, { useMemo } from "react";
 import styled from "styled-components";
 import { useSelector } from "react-redux";
-import { AppState } from "@appsmith/reducers";
-import { Datasource } from "entities/Datasource";
+import type { AppState } from "ee/reducers";
+import type { Datasource } from "entities/Datasource";
 import DatasourceCard from "./DatasourceCard";
-import { Button, Category, Size, Text, TextType } from "design-system";
+import { Text, TextType } from "@appsmith/ads-old";
+import { Button } from "@appsmith/ads";
 import { thinScrollbar } from "constants/DefaultTheme";
 import { keyBy } from "lodash";
 import {
   createMessage,
   EMPTY_ACTIVE_DATA_SOURCES,
-} from "@appsmith/constants/messages";
-import { hasCreateDatasourcePermission } from "@appsmith/utils/permissionHelpers";
-import { getCurrentAppWorkspace } from "@appsmith/selectors/workspaceSelectors";
+} from "ee/constants/messages";
+import { getCurrentAppWorkspace } from "ee/selectors/selectedWorkspaceSelectors";
+import { useFeatureFlag } from "utils/hooks/useFeatureFlag";
+import { FEATURE_FLAG } from "ee/entities/FeatureFlag";
+import { getHasCreateDatasourcePermission } from "ee/utils/BusinessFeatures/permissionPageHelpers";
 
 const QueryHomePage = styled.div`
   ${thinScrollbar};
@@ -28,21 +31,18 @@ const QueryHomePage = styled.div`
   }
 `;
 
-const CreateButton = styled(Button)`
-  display: inline;
-  padding: 4px 8px;
-`;
-
 const EmptyActiveDatasource = styled.div`
-  flex: 1;
   display: flex;
+  flex-direction: column;
+  flex: 1;
   align-items: center;
   justify-content: center;
+  gap: 1rem;
 `;
 
-type ActiveDataSourcesProps = {
+interface ActiveDataSourcesProps {
   dataSources: Datasource[];
-  pageId: string;
+  basePageId: string;
   location: {
     search: string;
   };
@@ -51,7 +51,7 @@ type ActiveDataSourcesProps = {
     push: (data: string) => void;
   };
   onCreateNew: () => void;
-};
+}
 
 function ActiveDataSources(props: ActiveDataSourcesProps) {
   const { dataSources } = props;
@@ -64,24 +64,26 @@ function ActiveDataSources(props: ActiveDataSourcesProps) {
     (state: AppState) => getCurrentAppWorkspace(state).userPermissions ?? [],
   );
 
-  const canCreateDatasource = hasCreateDatasourcePermission(
+  const isFeatureEnabled = useFeatureFlag(FEATURE_FLAG.license_gac_enabled);
+
+  const canCreateDatasource = getHasCreateDatasourcePermission(
+    isFeatureEnabled,
     userWorkspacePermissions,
   );
 
   if (dataSources.length === 0) {
     return (
       <EmptyActiveDatasource>
-        <Text cypressSelector="t--empty-datasource-list" type={TextType.H3}>
-          {createMessage(EMPTY_ACTIVE_DATA_SOURCES)}&nbsp;
-          <CreateButton
-            category={Category.primary}
-            disabled={!canCreateDatasource}
-            onClick={props.onCreateNew}
-            size={Size.medium}
-            tag="button"
-            text="Create New"
-          />
+        <Text data-testid="t--empty-datasource-list" type={TextType.H3}>
+          {createMessage(EMPTY_ACTIVE_DATA_SOURCES)}
         </Text>
+        <Button
+          isDisabled={!canCreateDatasource}
+          onClick={props.onCreateNew}
+          size="md"
+        >
+          Create new
+        </Button>
       </EmptyActiveDatasource>
     );
   }

@@ -1,4 +1,5 @@
-import { ColumnTypes, TableColumnProps } from "./Constants";
+import type { TableColumnProps } from "./Constants";
+import { ColumnTypes } from "./Constants";
 import { isPlainObject, isNil, isString } from "lodash";
 import moment from "moment";
 
@@ -10,6 +11,8 @@ export function sortTableFunction(
 ) {
   const tableData = filteredTableData ? [...filteredTableData] : [];
   return tableData.sort(
+    // TODO: Fix this the next time the file is edited
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (a: { [key: string]: any }, b: { [key: string]: any }) => {
       if (
         isPlainObject(a) &&
@@ -24,16 +27,16 @@ export function sortTableFunction(
                 ? 1
                 : -1
               : Number(b[sortedColumn]) > Number(a[sortedColumn])
-              ? 1
-              : -1;
+                ? 1
+                : -1;
           case ColumnTypes.DATE:
             return sortOrder
               ? moment(a[sortedColumn]).isAfter(b[sortedColumn])
                 ? 1
                 : -1
               : moment(b[sortedColumn]).isAfter(a[sortedColumn])
-              ? 1
-              : -1;
+                ? 1
+                : -1;
           default:
             return sortOrder
               ? a[sortedColumn].toString().toUpperCase() >
@@ -41,9 +44,9 @@ export function sortTableFunction(
                 ? 1
                 : -1
               : b[sortedColumn].toString().toUpperCase() >
-                a[sortedColumn].toString().toUpperCase()
-              ? 1
-              : -1;
+                  a[sortedColumn].toString().toUpperCase()
+                ? 1
+                : -1;
         }
       } else {
         return sortOrder ? 1 : 0;
@@ -68,6 +71,8 @@ export const transformTableDataIntoCsv = (props: {
       .filter((i) => !!i),
   );
   for (let row = 0; row < props.data.length; row++) {
+    // TODO: Fix this the next time the file is edited
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const data: { [key: string]: any } = props.data[row];
     const csvDataRow = [];
     for (let colIndex = 0; colIndex < props.columns.length; colIndex++) {

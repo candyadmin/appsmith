@@ -1,14 +1,15 @@
-import { Toaster, Variant } from "design-system";
 import * as log from "loglevel";
 import {
   LOCAL_STORAGE_QUOTA_EXCEEDED_MESSAGE,
   LOCAL_STORAGE_NO_SPACE_LEFT_ON_DEVICE_MESSAGE,
   LOCAL_STORAGE_NOT_SUPPORTED_APP_MIGHT_NOT_WORK_AS_EXPECTED,
   createMessage,
-} from "@appsmith/constants/messages";
+} from "ee/constants/messages";
+import { toast } from "@appsmith/ads";
 
 export const LOCAL_STORAGE_KEYS = {
   CANVAS_CARDS_STATE: "CANVAS_CARDS_STATE",
+  SPLITPANE_ANNOUNCEMENT: "SPLITPANE_ANNOUNCEMENT",
 };
 
 class LocalStorageNotSupportedError extends Error {
@@ -68,9 +69,8 @@ class WebStorage {
     }
 
     if (message) {
-      Toaster.show({
-        text: createMessage(message),
-        variant: Variant.danger,
+      toast.show(createMessage(message), {
+        kind: "error",
       });
     } else {
       throw e;

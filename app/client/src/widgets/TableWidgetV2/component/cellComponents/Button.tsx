@@ -2,7 +2,7 @@ import React, { useState } from "react";
 
 import { ActionWrapper } from "../TableStyledWrappers";
 import { BaseButton } from "widgets/ButtonWidget/component";
-import { ButtonColumnActions } from "widgets/TableWidgetV2/constants";
+import type { ButtonColumnActions } from "widgets/TableWidgetV2/constants";
 import styled from "styled-components";
 
 const StyledButton = styled(BaseButton)<{
@@ -11,21 +11,21 @@ const StyledButton = styled(BaseButton)<{
   min-width: 40px;
 
   min-height: ${({ compactMode }) =>
-    compactMode === "SHORT" ? "24px" : "30px"};
+    compactMode === "SHORT" ? "22px" : "27px"};
   font-size: ${({ compactMode }) =>
     compactMode === "SHORT" ? "12px" : "14px"};
   line-height: ${({ compactMode }) =>
     compactMode === "SHORT" ? "24px" : "28px"};
 `;
 
-type ButtonProps = {
+interface ButtonProps {
   isCellVisible: boolean;
   isSelected: boolean;
   isDisabled?: boolean;
   action: ButtonColumnActions;
   compactMode?: string;
   onCommandClick: (dynamicTrigger: string, onComplete: () => void) => void;
-};
+}
 
 export function Button(props: ButtonProps) {
   const [loading, setLoading] = useState(false);

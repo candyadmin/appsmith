@@ -14,13 +14,13 @@ import java.util.Set;
 
 public interface WorkspaceServiceCE extends CrudService<Workspace, String> {
 
-    String getDefaultNameForGroupInWorkspace(String prefix, String workspaceName);
-
     Mono<Workspace> create(Workspace workspace);
 
     Mono<Workspace> createDefault(Workspace workspace, User user);
 
     Mono<Workspace> create(Workspace workspace, User user, Boolean isDefault);
+
+    Mono<Workspace> getById(String id);
 
     Mono<Workspace> findById(String id, AclPermission permission);
 
@@ -41,4 +41,6 @@ public interface WorkspaceServiceCE extends CrudService<Workspace, String> {
     Flux<Workspace> getAll();
 
     Mono<Workspace> archiveById(String s);
+
+    Mono<String> getDefaultEnvironmentId(String workspaceId, AclPermission aclPermission);
 }

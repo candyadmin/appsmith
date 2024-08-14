@@ -1,8 +1,4 @@
 import React from "react";
-import { useHistory } from "react-router-dom";
-import styled from "styled-components";
-import { Text, TextType } from "design-system";
-import { Icon } from "@blueprintjs/core";
 import PerformanceTracker, {
   PerformanceTransactionName,
 } from "utils/PerformanceTracker";
@@ -10,31 +6,30 @@ import { INTEGRATION_TABS } from "constants/routes";
 import { getQueryParams } from "utils/URLUtils";
 import { getIsGeneratePageInitiator } from "utils/GenerateCrudUtil";
 import {
-  builderURL,
   generateTemplateFormURL,
   integrationEditorURL,
-} from "RouteBuilder";
+  widgetListURL,
+} from "ee/RouteBuilder";
 import { useSelector } from "react-redux";
-import { getCurrentPageId } from "selectors/editorSelectors";
-import AnalyticsUtil from "utils/AnalyticsUtil";
+import { getCurrentBasePageId } from "selectors/editorSelectors";
+import AnalyticsUtil from "ee/utils/AnalyticsUtil";
+import { Link } from "@appsmith/ads";
+import styled from "styled-components";
+import type { AppsmithLocationState } from "../../utils/history";
+import { NavigationMethod } from "../../utils/history";
+import { useHistory } from "react-router-dom";
 
-const IconContainer = styled.div`
-  //width: 100%;
-  height: 30px;
-  display: flex;
-  align-items: center;
-  cursor: pointer;
-  padding-left: 16px;
+const StyledLink = styled(Link)`
+  margin: var(--ads-v2-spaces-7) 0 0 var(--ads-v2-spaces-7);
   width: fit-content;
-  /* background-color: ${(props) => props.theme.colors.apiPane.iconHoverBg}; */
 `;
 
 function CloseEditor() {
-  const history = useHistory();
+  const history = useHistory<AppsmithLocationState>();
   const params: string = location.search;
   const searchParamsInstance = new URLSearchParams(params);
   const redirectTo = searchParamsInstance.get("from");
-  const pageId = useSelector(getCurrentPageId);
+  const basePageId = useSelector(getCurrentBasePageId);
 
   const isGeneratePageInitiator = getIsGeneratePageInitiator();
   let integrationTab = INTEGRATION_TABS.ACTIVE;
@@ -46,44 +41,44 @@ function CloseEditor() {
     integrationTab = INTEGRATION_TABS.NEW;
   }
 
-  const handleClose = (e: React.MouseEvent) => {
+  const handleClose = () => {
     PerformanceTracker.startTracking(
       PerformanceTransactionName.CLOSE_SIDE_PANE,
       { path: location.pathname },
     );
-    e.stopPropagation();
 
     // if it is a generate CRUD page flow from which user came here
     // then route user back to `/generate-page/form`
     // else go back to BUILDER_PAGE
     const redirectURL = isGeneratePageInitiator
-      ? generateTemplateFormURL({ pageId })
-      : builderURL({ pageId });
+      ? generateTemplateFormURL({ basePageId })
+      : widgetListURL({ basePageId });
 
     const URL =
       redirectTo === "datasources"
         ? integrationEditorURL({
-            pageId,
+            basePageId,
             selectedTab: integrationTab,
             params: getQueryParams(),
           })
         : redirectURL;
-
     AnalyticsUtil.logEvent("BACK_BUTTON_CLICK", {
       type: "BACK_BUTTON",
       fromUrl: location.pathname,
       toUrl: URL,
     });
-    history.push(URL);
+    history.push(URL, { invokedBy: NavigationMethod.ActionBackButton });
   };
 
   return (
-    <IconContainer className="t--close-editor" onClick={handleClose}>
-      <Icon icon="chevron-left" iconSize={16} />
-      <Text style={{ color: "#0c0000", lineHeight: "14px" }} type={TextType.P1}>
-        Back
-      </Text>
-    </IconContainer>
+    <StyledLink
+      className="t--close-editor"
+      kind="secondary"
+      onClick={handleClose}
+      startIcon="arrow-left-line"
+    >
+      Back
+    </StyledLink>
   );
 }
 

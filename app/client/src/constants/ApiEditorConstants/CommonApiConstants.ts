@@ -8,26 +8,45 @@ export enum HTTP_METHOD {
   PATCH = "PATCH",
 }
 
-export const HTTP_METHODS_COLOR: Record<HTTP_METHOD, string> = {
-  GET: "#457AE6",
-  POST: "#FEB811",
-  PUT: "#5BB749",
-  DELETE: "#E22C2C",
-  PATCH: "#6D6D6D",
+// This constant lists defines the supported HTTP protocol versions
+// label defines the display name of the protocol
+// value defines the value of the protocol that is sent to the server
+export const HTTP_PROTOCOL = {
+  HTTP11: {
+    label: "HTTP/1.1",
+    value: "HTTP11",
+  },
+  H2: {
+    label: "HTTP/2",
+    value: "H2",
+  },
+  H2C: {
+    label: "H2C",
+    value: "H2C",
+  },
 };
 
+export const HTTP_METHODS_COLOR: Record<HTTP_METHOD, string> = {
+  GET: "var(--ads-v2-color-fg-information)",
+  POST: "var(--ads-v2-color-fg-warning)",
+  PUT: "var(--ads-v2-color-fg-success)",
+  DELETE: "var(--ads-v2-color-fg-error)",
+  PATCH: "var(--ads-v2-color-fg-muted)",
+};
 export enum API_EDITOR_TABS {
   HEADERS = "HEADERS",
   PARAMS = "PARAMS",
   BODY = "BODY",
   PAGINATION = "PAGINATION",
-  SETTINGS = "SETTINGS",
   AUTHENTICATION = "AUTHENTICATION",
+  SETTINGS = "SETTINGS",
 }
 
 export const HTTP_METHOD_OPTIONS = Object.values(HTTP_METHOD).map((method) => ({
   value: method,
 }));
+
+export const HTTP_PROTOCOL_VERSIONS = Object.values(HTTP_PROTOCOL);
 
 export const EMPTY_KEY_VALUE_PAIRS = [
   { key: "", value: "" },
@@ -39,6 +58,7 @@ export enum ApiContentType {
   JSON = "json",
   FORM_URLENCODED = "x-www-form-urlencoded",
   MULTIPART_FORM_DATA = "multi-part/form-data",
+  BINARY = "application/octet-stream",
   RAW = "text/plain",
 }
 
@@ -53,6 +73,7 @@ export const POST_BODY_FORMAT_OPTIONS: Record<
   JSON: "application/json",
   FORM_URLENCODED: "application/x-www-form-urlencoded",
   MULTIPART_FORM_DATA: "multipart/form-data",
+  BINARY: "application/octet-stream",
   RAW: "text/plain",
 };
 
@@ -101,6 +122,7 @@ export enum MultiPartOptionTypes {
   TEXT = "Text",
   FILE = "File",
   ARRAY = "Array",
+  JSON = "JSON",
 }
 
 export interface MULTI_PART_DROPDOWN_OPTION {
@@ -108,20 +130,8 @@ export interface MULTI_PART_DROPDOWN_OPTION {
   value: string;
 }
 
-export const MULTI_PART_DROPDOWN_OPTIONS: MULTI_PART_DROPDOWN_OPTION[] = [
-  {
-    label: MultiPartOptionTypes.TEXT,
-    value: "TEXT",
-  },
-  {
-    label: MultiPartOptionTypes.FILE,
-    value: "FILE",
-  },
-  {
-    label: MultiPartOptionTypes.ARRAY,
-    value: "ARRAY",
-  },
-];
+export const MULTI_PART_DROPDOWN_OPTIONS: MULTI_PART_DROPDOWN_OPTION[] =
+  Object.values(MultiPartOptionTypes).map((value) => ({ label: value, value }));
 
 export const DEFAULT_MULTI_PART_DROPDOWN_WIDTH = "77px";
 export const DEFAULT_MULTI_PART_DROPDOWN_HEIGHT = "100%";

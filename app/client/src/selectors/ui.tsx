@@ -1,4 +1,4 @@
-import { AppState } from "@appsmith/reducers";
+import type { AppState } from "ee/reducers";
 import { createSelector } from "reselect";
 
 export const getLastSelectedWidget = (state: AppState) =>
@@ -6,6 +6,14 @@ export const getLastSelectedWidget = (state: AppState) =>
 
 export const getSelectedWidgets = (state: AppState) =>
   state.ui.widgetDragResize.selectedWidgets;
+
+export const getDefaultSelectedWidgetIds = (state: AppState) => {
+  const widgets = Object.keys(state.entities.canvasWidgets);
+  // We check for more than 1 because MainContainer is always present
+  if (widgets.length > 1) {
+    return [widgets[1]];
+  }
+};
 
 /**
  * Selector to use id and provide the status of saving an API.
@@ -37,6 +45,11 @@ export const getFocusedWidget = (state: AppState) =>
 export const isDatasourceInViewMode = (state: AppState) =>
   state.ui.datasourcePane.viewMode;
 
+export const getDsViewModeValues = (state: AppState) => ({
+  datasourceId: state.ui.datasourcePane.expandDatasourceId,
+  viewMode: state.ui.datasourcePane.viewMode,
+});
+
 export const getAllDatasourceCollapsibleState = (state: AppState) =>
   state.ui.datasourcePane.collapsibleState;
 
@@ -47,5 +60,21 @@ export const getDatasourceCollapsibleState = createSelector(
     key: string,
   ): boolean | undefined => {
     return datasourceCollapsibleState[key];
+  },
+);
+
+export const getIsConsolidatedPageLoading = (state: AppState) =>
+  state.ui.consolidatedPageLoad.isLoading;
+
+export const getIsAltFocusWidget = (state: AppState) =>
+  state.ui.widgetDragResize.altFocus;
+
+export const getWidgetSelectionBlock = (state: AppState) =>
+  state.ui.widgetDragResize.blockSelection;
+
+export const getAltBlockWidgetSelection = createSelector(
+  [getWidgetSelectionBlock, getIsAltFocusWidget],
+  (isWidgetSelectionBlock, isAltFocusWidget) => {
+    return isWidgetSelectionBlock ? !isAltFocusWidget : false;
   },
 );

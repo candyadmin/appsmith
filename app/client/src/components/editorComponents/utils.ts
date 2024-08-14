@@ -1,16 +1,13 @@
-import { JSAction } from "entities/JSCollection";
+import type { JSAction } from "entities/JSCollection";
 import { JSResponseState } from "./JSResponseView";
 
 export const isHtml = (str: string) => {
-  const fragment = document.createRange().createContextualFragment(str);
-
-  // remove all non text nodes from fragment
-  fragment
-    .querySelectorAll("*")
-    .forEach((el: any) => el.parentNode.removeChild(el));
-
-  // if there is textContent, then its not a pure HTML
-  return !(fragment.textContent || "").trim();
+  const doc = new DOMParser().parseFromString(str, "text/html");
+  return Array.from(doc.body.childNodes).some(
+    // TODO: Fix this the next time the file is edited
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (node: any) => node.nodeType === 1,
+  );
 };
 
 /**
@@ -27,6 +24,8 @@ export function getJSResponseViewState(
   isDirty: Record<string, boolean>,
   isExecuting: Record<string, boolean>,
   isSaving: boolean,
+  // TODO: Fix this the next time the file is edited
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   responses: Record<string, any>,
 ): JSResponseState {
   if (!currentFunction) return JSResponseState.NoResponse;

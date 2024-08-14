@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback } from "react";
 import styled from "styled-components";
 import { Icon, InputGroup } from "@blueprintjs/core";
 import { debounce } from "lodash";
-import { AnyStyledComponent } from "styled-components";
 
 import CustomizedDropdown from "pages/common/CustomizedDropdown";
 import { Directions } from "utils/helpers";
@@ -10,23 +9,16 @@ import { Colors } from "constants/Colors";
 import { ControlIcons } from "icons/ControlIcons";
 import { Skin } from "constants/DefaultTheme";
 import AutoToolTipComponent from "widgets/TableWidget/component/AutoToolTipComponent";
-import {
-  OperatorTypes,
-  Condition,
-  ColumnTypes,
-  Operator,
-  ReactTableFilter,
-} from "./Constants";
-import { DropdownOption } from "./TableFilters";
+import type { Condition, Operator, ReactTableFilter } from "./Constants";
+import { OperatorTypes, ColumnTypes } from "./Constants";
+import type { DropdownOption } from "./TableFilters";
 import { RenderOptionWrapper } from "./TableStyledWrappers";
 
 //TODO(abhinav): Fix this cross import between widgets
 import DatePickerComponent from "widgets/DatePickerWidget2/component";
 import { TimePrecision } from "widgets/DatePickerWidget2/constants";
 
-const StyledRemoveIcon = styled(
-  ControlIcons.CLOSE_CIRCLE_CONTROL as AnyStyledComponent,
-)`
+const StyledRemoveIcon = styled(ControlIcons.CLOSE_CIRCLE_CONTROL)`
   padding: 0;
   position: relative;
   cursor: pointer;
@@ -270,10 +262,12 @@ function RenderInput(props: {
   );
 }
 
-type CascadeFieldProps = {
+interface CascadeFieldProps {
   columns: DropdownOption[];
   column: string;
   condition: Condition;
+  // TODO: Fix this the next time the file is edited
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   value: any;
   operator: Operator;
   index: number;
@@ -282,11 +276,13 @@ type CascadeFieldProps = {
   removeFilter: (index: number) => void;
   accentColor: string;
   borderRadius: string;
-};
+}
 
-type CascadeFieldState = {
+interface CascadeFieldState {
   column: string;
   condition: Condition;
+  // TODO: Fix this the next time the file is edited
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   value: any;
   operator: Operator;
   conditions: DropdownOption[];
@@ -295,7 +291,7 @@ type CascadeFieldState = {
   showDateInput: boolean;
   isDeleted: boolean;
   isUpdate: boolean;
-};
+}
 
 const getConditions = (props: CascadeFieldProps) => {
   const columnValue = props.column || "";
@@ -378,6 +374,8 @@ function CaseCaseFieldReducer(
   state: CascadeFieldState,
   action: {
     type: CascadeFieldAction;
+    // TODO: Fix this the next time the file is edited
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     payload?: any;
   },
 ) {
@@ -430,9 +428,10 @@ function CaseCaseFieldReducer(
 }
 
 function CascadeField(props: CascadeFieldProps) {
-  const memoizedState = React.useMemo(() => calculateInitialState(props), [
-    props,
-  ]);
+  const memoizedState = React.useMemo(
+    () => calculateInitialState(props),
+    [props],
+  );
   return <Fields state={memoizedState} {...props} />;
 }
 

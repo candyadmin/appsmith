@@ -1,4 +1,6 @@
-import { AppState } from "@appsmith/reducers";
+import type { AppState } from "ee/reducers";
+import { createSelector } from "reselect";
+import { combinedPreviewModeSelector } from "./editorSelectors";
 
 type GetFormData = (
   state: AppState,
@@ -13,11 +15,17 @@ export const getDisplayFormat: GetFormData = (state, apiId) => {
 export const getApiPaneConfigSelectedTabIndex = (state: AppState) =>
   state.ui.apiPane.selectedConfigTabIndex;
 
-export const getApiPaneResponseSelectedTab = (state: AppState) =>
-  state.ui.apiPane.selectedResponseTab;
-
-export const getApiPaneResponsePaneHeight = (state: AppState) =>
-  state.ui.apiPane.responseTabHeight;
-
 export const getApiRightPaneSelectedTab = (state: AppState) =>
   state.ui.apiPane.selectedRightPaneTab;
+
+export const getIsRunning = (state: AppState, apiId: string) =>
+  state.ui.apiPane.isRunning[apiId];
+
+export const getApiPaneDebuggerState = (state: AppState) =>
+  state.ui.apiPane.debugger;
+
+export const showApiPaneDebugger = createSelector(
+  (state) => state.ui.apiPane.debugger.open,
+  combinedPreviewModeSelector,
+  (isOpen, isPreview) => isOpen && !isPreview,
+);

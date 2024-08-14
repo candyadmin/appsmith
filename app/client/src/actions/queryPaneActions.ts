@@ -1,41 +1,38 @@
-import {
-  ReduxActionTypes,
-  ReduxAction,
-} from "@appsmith/constants/ReduxActionConstants";
-import { Action } from "entities/Action";
+import type { ReduxAction } from "ee/constants/ReduxActionConstants";
+import { ReduxActionTypes } from "ee/constants/ReduxActionConstants";
+import type { Action } from "entities/Action";
+import type { QueryPaneDebuggerState } from "ee/reducers/uiReducers/queryPaneReducer";
 
-export const changeQuery = (
-  id: string,
-  newQuery?: boolean,
-  action?: Action,
-): ReduxAction<{
-  id: string;
+export interface ChangeQueryPayload {
+  baseQueryId: string;
+  packageId?: string;
+  applicationId?: string;
+  basePageId?: string;
+  moduleId?: string;
+  workflowId?: string;
   newQuery?: boolean;
-  action?: any;
-}> => {
+  action?: Action;
+}
+
+export const changeQuery = (payload: ChangeQueryPayload) => {
   return {
     type: ReduxActionTypes.QUERY_PANE_CHANGE,
-    payload: { id, newQuery, action },
+    payload,
   };
 };
 
 export const setQueryPaneConfigSelectedTabIndex: (
-  payload: number,
-) => ReduxAction<{ selectedTabIndex: number }> = (payload: number) => ({
+  payload: string,
+) => ReduxAction<{ selectedTabIndex: string }> = (payload: string) => ({
   type: ReduxActionTypes.SET_QUERY_PANE_CONFIG_SELECTED_TAB,
   payload: { selectedTabIndex: payload },
 });
 
-export const setQueryPaneResponseSelectedTab: (
-  payload: string,
-) => ReduxAction<{ selectedTab: string }> = (payload: string) => ({
-  type: ReduxActionTypes.SET_QUERY_PANE_RESPONSE_SELECTED_TAB,
-  payload: { selectedTab: payload },
-});
-
-export const setQueryPaneResponsePaneHeight: (
-  payload: number,
-) => ReduxAction<{ height: number }> = (payload: number) => ({
-  type: ReduxActionTypes.SET_QUERY_PANE_RESPONSE_PANE_HEIGHT,
-  payload: { height: payload },
-});
+export const setQueryPaneDebuggerState = (
+  payload: Partial<QueryPaneDebuggerState>,
+) => {
+  return {
+    type: ReduxActionTypes.SET_QUERY_PANE_DEBUGGER_STATE,
+    payload,
+  };
+};

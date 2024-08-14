@@ -1,11 +1,12 @@
 import React from "react";
-import Select, { InputActionMeta } from "react-select";
-import { WrappedFieldInputProps, WrappedFieldMetaProps } from "redux-form";
+import type { InputActionMeta } from "react-select";
+import Select from "react-select";
+import type { WrappedFieldInputProps, WrappedFieldMetaProps } from "redux-form";
 
 import { theme } from "constants/DefaultTheme";
-import { SelectComponents } from "react-select/src/components";
+import type { SelectComponents } from "react-select/src/components";
 
-type DropdownProps = {
+interface DropdownProps {
   options: Array<{
     value: string;
     label: string;
@@ -14,19 +15,25 @@ type DropdownProps = {
   isLoading?: boolean;
   input: WrappedFieldInputProps;
   meta: WrappedFieldMetaProps;
+  // TODO: Fix this the next time the file is edited
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   components: SelectComponents<any>;
   onCreateOption: (inputValue: string) => void;
   formatCreateLabel?: (value: string) => React.ReactNode;
   noOptionsMessage?: (obj: { inputValue: string }) => string;
   inputValue?: string;
   onInputChange: (value: string, actionMeta: InputActionMeta) => void;
-};
+}
 
 const selectStyles = {
+  // TODO: Fix this the next time the file is edited
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   placeholder: (provided: any) => ({
     ...provided,
     color: "#a3b3bf",
   }),
+  // TODO: Fix this the next time the file is edited
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   multiValue: (provided: any) => ({
     ...provided,
     backgroundColor: "rgba(104,113,239,0.1)",
@@ -44,11 +51,15 @@ const selectStyles = {
       display: "none",
     };
   },
+  // TODO: Fix this the next time the file is edited
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   container: (styles: any) => ({
     ...styles,
     flex: 1,
     zIndex: "5",
   }),
+  // TODO: Fix this the next time the file is edited
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   control: (styles: any, state: any) => ({
     ...styles,
     minHeight: "32px",
@@ -60,14 +71,20 @@ const selectStyles = {
       border: `${theme.colors.secondary} solid 1px`,
     },
   }),
+  // TODO: Fix this the next time the file is edited
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   indicatorsContainer: (provided: any) => ({
     ...provided,
     height: "30px",
   }),
+  // TODO: Fix this the next time the file is edited
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   clearIndicator: (provided: any) => ({
     ...provided,
     padding: "5px",
   }),
+  // TODO: Fix this the next time the file is edited
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   dropdownIndicator: (provided: any) => ({
     ...provided,
     padding: "5px",

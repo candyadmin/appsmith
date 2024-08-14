@@ -92,8 +92,7 @@ export default {
       },
     };
     const compactMode = props.compactMode || "DEFAULT";
-    const componentHeight =
-      (props.bottomRow - props.topRow) * props.parentRowSpace - 10;
+    const componentHeight = props.componentHeight - 10;
     const tableSizes = TABLE_SIZES[compactMode];
     let pageSize = Math.floor(
       (componentHeight -
@@ -121,10 +120,7 @@ export default {
         const sanitizedData = {};
 
         for (const [key, value] of Object.entries(entry)) {
-          let sanitizedKey = key
-            .split(separatorRegex)
-            .join("_")
-            .slice(0, 200);
+          let sanitizedKey = key.split(separatorRegex).join("_").slice(0, 200);
           sanitizedKey = _.isNaN(Number(sanitizedKey))
             ? sanitizedKey
             : `_${sanitizedKey}`;
@@ -299,8 +295,8 @@ export default {
                     ? 1
                     : -1
                   : Number(b[sortedColumn]) > Number(a[sortedColumn])
-                  ? 1
-                  : -1;
+                    ? 1
+                    : -1;
               case "date":
                 try {
                   return sortOrder
@@ -310,10 +306,10 @@ export default {
                       ? 1
                       : -1
                     : moment(b[sortedColumn], inputFormat).isAfter(
-                        moment(a[sortedColumn], inputFormat),
-                      )
-                    ? 1
-                    : -1;
+                          moment(a[sortedColumn], inputFormat),
+                        )
+                      ? 1
+                      : -1;
                 } catch (e) {
                   return -1;
                 }
@@ -324,9 +320,9 @@ export default {
                     ? 1
                     : -1
                   : b[sortedColumn].toString().toUpperCase() >
-                    a[sortedColumn].toString().toUpperCase()
-                  ? 1
-                  : -1;
+                      a[sortedColumn].toString().toUpperCase()
+                    ? 1
+                    : -1;
             }
           }
         } else {
@@ -396,10 +392,7 @@ export default {
       startsWith: (a, b) => {
         try {
           return (
-            a
-              .toString()
-              .toLowerCase()
-              .indexOf(b.toString().toLowerCase()) === 0
+            a.toString().toLowerCase().indexOf(b.toString().toLowerCase()) === 0
           );
         } catch (e) {
           return false;
@@ -441,10 +434,7 @@ export default {
 
     const finalTableData = sortedTableData.filter((item) => {
       const searchFound = getSearchKey()
-        ? Object.values(item)
-            .join(", ")
-            .toLowerCase()
-            .includes(getSearchKey())
+        ? Object.values(item).join(", ").toLowerCase().includes(getSearchKey())
         : true;
       if (!searchFound) return false;
       if (!props.filters || props.filters.length === 0) return true;

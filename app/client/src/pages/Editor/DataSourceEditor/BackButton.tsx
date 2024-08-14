@@ -1,48 +1,45 @@
 import React from "react";
 import styled from "styled-components";
-import { Icon } from "@blueprintjs/core";
-import { Text, TextType } from "design-system";
-import { useHistory } from "react-router-dom";
 import { getIsGeneratePageInitiator } from "utils/GenerateCrudUtil";
-import { Colors } from "constants/Colors";
-import { builderURL, generateTemplateFormURL } from "RouteBuilder";
-import AnalyticsUtil from "utils/AnalyticsUtil";
+import { builderURL, generateTemplateFormURL } from "ee/RouteBuilder";
+import AnalyticsUtil from "ee/utils/AnalyticsUtil";
 import { useSelector } from "react-redux";
-import { getCurrentPageId } from "selectors/editorSelectors";
+import { getCurrentBasePageId } from "selectors/editorSelectors";
+import { Link } from "@appsmith/ads";
+import type { AppsmithLocationState } from "utils/history";
+import { NavigationMethod } from "utils/history";
+import { useHistory } from "react-router-dom";
 
-const Back = styled.span`
-  height: 30px;
+const Back = styled(Link)`
   display: flex;
   align-items: center;
-  cursor: pointer;
-  padding-left: 16px;
+  margin: var(--ads-v2-spaces-7) 0 0 var(--ads-v2-spaces-7);
 `;
 
 function BackButton() {
-  const history = useHistory();
-  const pageId = useSelector(getCurrentPageId);
+  const history = useHistory<AppsmithLocationState>();
+  const basePageId = useSelector(getCurrentBasePageId);
   const goBack = () => {
     const isGeneratePageInitiator = getIsGeneratePageInitiator();
     const redirectURL = isGeneratePageInitiator
-      ? generateTemplateFormURL({ pageId })
-      : builderURL({ pageId });
+      ? generateTemplateFormURL({ basePageId })
+      : builderURL({ basePageId });
 
     AnalyticsUtil.logEvent("BACK_BUTTON_CLICK", {
       type: "BACK_BUTTON",
       fromUrl: location.pathname,
       toUrl: redirectURL,
     });
-    history.push(redirectURL);
+    history.push(redirectURL, { invokedBy: NavigationMethod.ActionBackButton });
   };
+
   return (
-    <Back className="t--back-button" onClick={goBack}>
-      <Icon icon="chevron-left" iconSize={16} />
-      <Text
-        style={{ color: Colors.DIESEL, lineHeight: "14px" }}
-        type={TextType.P1}
-      >
-        Back
-      </Text>
+    <Back
+      className="t--back-button"
+      onClick={goBack}
+      startIcon="arrow-left-line"
+    >
+      Back
     </Back>
   );
 }

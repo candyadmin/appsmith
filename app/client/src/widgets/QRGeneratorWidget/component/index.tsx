@@ -1,9 +1,9 @@
 import * as React from "react";
-import { Text } from "@blueprintjs/core";
-import { ComponentProps } from "widgets/BaseComponent";
-import { TextSize } from "constants/WidgetConstants";
+import type { Text } from "@blueprintjs/core";
+import type { ComponentProps } from "widgets/BaseComponent";
+import type { TextSize } from "constants/WidgetConstants";
 import { isEqual, get } from "lodash";
-import { Color } from "constants/Colors";
+import type { Color } from "constants/Colors";
 import { OverflowTypes } from "../constants";
 
 export type TextAlign = "LEFT" | "CENTER" | "RIGHT" | "JUSTIFY";
@@ -25,17 +25,12 @@ export interface TextComponentProps extends ComponentProps {
   borderColor?: Color;
   borderWidth?: number;
   overflow: OverflowTypes;
-  // helpers to detect and re-calculate content width
-  bottomRow?: number;
-  leftColumn?: number;
-  rightColumn?: number;
-  topRow?: number;
 }
 
-type State = {
+interface State {
   isTruncated: boolean;
   showModal: boolean;
-};
+}
 
 type TextRef = React.Ref<Text> | undefined;
 
@@ -47,6 +42,8 @@ class TextComponent extends React.Component<TextComponentProps, State> {
 
   textRef = React.createRef() as TextRef;
 
+  // TODO: Fix this the next time the file is edited
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   getTruncate = (element: any) => {
     const { isTruncated } = this.state;
     // add ELLIPSIS_HEIGHT and check content content is overflowing or not

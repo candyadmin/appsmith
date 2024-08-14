@@ -2,51 +2,35 @@ import React from "react";
 import { useSelector } from "react-redux";
 
 import { useParams } from "react-router-dom";
-import styled from "styled-components";
 import { removeSpecialChars } from "utils/helpers";
-import { AppState } from "@appsmith/reducers";
-import { JSCollection } from "entities/JSCollection";
-import { Classes } from "@blueprintjs/core";
-import { saveJSObjectName } from "actions/jsActionActions";
-import { getJSCollection, getPlugin } from "selectors/entitiesSelector";
-import NameEditorComponent from "components/utils/NameEditorComponent";
+import type { AppState } from "ee/reducers";
+import {
+  getJsCollectionByBaseId,
+  getPlugin,
+} from "ee/selectors/entitiesSelector";
 import {
   ACTION_NAME_PLACEHOLDER,
+  JSOBJECT_ID_NOT_FOUND_IN_URL,
   createMessage,
-} from "@appsmith/constants/messages";
-import { PluginType } from "entities/Action";
-import { Plugin } from "api/PluginApi";
-import { Spinner } from "@blueprintjs/core";
+} from "ee/constants/messages";
 import EditableText, {
   EditInteractionKind,
 } from "components/editorComponents/EditableText";
+import { Flex } from "@appsmith/ads";
+import { getAssetUrl } from "ee/utils/airgapHelpers";
+import NameEditorComponent, {
+  IconBox,
+  IconWrapper,
+  NameWrapper,
+} from "components/utils/NameEditorComponent";
+import { getSavingStatusForJSObjectName } from "selectors/actionSelectors";
+import type { ReduxAction } from "ee/constants/ReduxActionConstants";
 
-const JSObjectNameWrapper = styled.div<{ page?: string }>`
-  min-width: 50%;
-  margin-right: 10px;
-  display: flex;
-  justify-content: flex-start;
-  align-content: center;
-  & > div {
-    display: flex;
-    max-width: 100%;
-    flex: 0 1 auto;
-    font-size: ${(props) => props.theme.fontSizes[5]}px;
-    font-weight: ${(props) => props.theme.fontWeights[2]};
-  }
-
-  ${(props) =>
-    props.page === "JS_PANE"
-      ? `  &&& .${Classes.EDITABLE_TEXT_CONTENT}, &&& .${Classes.EDITABLE_TEXT_INPUT} {
-    font-size: ${props.theme.typography.h3.fontSize}px;
-    line-height: ${props.theme.typography.h3.lineHeight}px !important;
-    letter-spacing: ${props.theme.typography.h3.letterSpacing}px;
-    font-weight: ${props.theme.typography.h3.fontWeight};
-  }`
-      : null}
-`;
-
-type JSObjectNameEditorProps = {
+export interface SaveActionNameParams {
+  id: string;
+  name: string;
+}
+export interface JSObjectNameEditorProps {
   /*
     This prop checks if page is API Pane or Query Pane or Curl Pane
     So, that we can toggle between ads editable-text component and existing editable-text component
@@ -55,33 +39,36 @@ type JSObjectNameEditorProps = {
   */
   page?: string;
   disabled?: boolean;
-};
-
-const JSIconWrapper = styled.img`
-  width: 24px;
-  height: 24px;
-  margin-right: 8px;
-  align-self: center;
-`;
+  saveJSObjectName: (
+    params: SaveActionNameParams,
+  ) => ReduxAction<SaveActionNameParams>;
+}
 
 export function JSObjectNameEditor(props: JSObjectNameEditorProps) {
-  const params = useParams<{ collectionId?: string; queryId?: string }>();
+  const params = useParams<{
+    baseCollectionId?: string;
+    baseQueryId?: string;
+  }>();
 
-  const currentJSObjectConfig:
-    | JSCollection
-    | undefined = useSelector((state: AppState) =>
-    getJSCollection(state, params.collectionId || ""),
+  const currentJSObjectConfig = useSelector((state: AppState) =>
+    getJsCollectionByBaseId(state, params.baseCollectionId || ""),
   );
 
-  const currentPlugin: Plugin | undefined = useSelector((state: AppState) =>
+  const currentPlugin = useSelector((state: AppState) =>
     getPlugin(state, currentJSObjectConfig?.pluginId || ""),
+  );
+
+  const saveStatus = useSelector((state) =>
+    getSavingStatusForJSObjectName(state, currentJSObjectConfig?.id || ""),
   );
 
   return (
     <NameEditorComponent
-      currentActionConfig={currentJSObjectConfig}
-      dispatchAction={saveJSObjectName}
-      pluginType={PluginType.JS}
+      dispatchAction={props.saveJSObjectName}
+      id={currentJSObjectConfig?.id}
+      idUndefinedErrorMessage={JSOBJECT_ID_NOT_FOUND_IN_URL}
+      name={currentJSObjectConfig?.name}
+      saveStatus={saveStatus}
     >
       {({
         forceUpdate,
@@ -96,13 +83,20 @@ export function JSObjectNameEditor(props: JSObjectNameEditorProps) {
         isNew: boolean;
         saveStatus: { isSaving: boolean; error: boolean };
       }) => (
-        <JSObjectNameWrapper page={props.page}>
-          <div>
+        <NameWrapper enableFontStyling>
+          <Flex
+            alignItems="center"
+            gap="spaces-3"
+            overflow="hidden"
+            width="100%"
+          >
             {currentPlugin && (
-              <JSIconWrapper
-                alt={currentPlugin.name}
-                src={currentPlugin.iconLocation}
-              />
+              <IconBox>
+                <IconWrapper
+                  alt={currentPlugin.name}
+                  src={getAssetUrl(currentPlugin.iconLocation)}
+                />
+              </IconBox>
             )}
             <EditableText
               className="t--js-action-name-edit-field"
@@ -116,14 +110,14 @@ export function JSObjectNameEditor(props: JSObjectNameEditorProps) {
               isEditingDefault={isNew}
               isInvalid={isInvalidNameForEntity}
               onTextChanged={handleNameChange}
-              placeholder={createMessage(ACTION_NAME_PLACEHOLDER, "JS object")}
+              placeholder={createMessage(ACTION_NAME_PLACEHOLDER, "JS Object")}
               type="text"
+              underline
               updating={saveStatus.isSaving}
               valueTransform={removeSpecialChars}
             />
-            {saveStatus.isSaving && <Spinner size={16} />}
-          </div>
-        </JSObjectNameWrapper>
+          </Flex>
+        </NameWrapper>
       )}
     </NameEditorComponent>
   );

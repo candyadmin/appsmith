@@ -1,39 +1,24 @@
 import React from "react";
-import BaseControl, { ControlProps } from "./BaseControl";
-import { StyledPropertyPaneButton } from "./StyledControls";
-import styled from "constants/DefaultTheme";
-import { BaseItemProps, RenderComponentProps } from "./DraggableListComponent";
+import type { ControlProps } from "./BaseControl";
+import BaseControl from "./BaseControl";
+import type {
+  BaseItemProps as DroppableItem,
+  RenderComponentProps,
+} from "./DraggableListComponent";
 import orderBy from "lodash/orderBy";
 import isString from "lodash/isString";
 import isUndefined from "lodash/isUndefined";
 import includes from "lodash/includes";
 import map from "lodash/map";
 import * as Sentry from "@sentry/react";
-import { Category, Size } from "design-system";
 import { useDispatch } from "react-redux";
-import { ReduxActionTypes } from "@appsmith/constants/ReduxActionConstants";
+import { ReduxActionTypes } from "ee/constants/ReduxActionConstants";
 import { DraggableListControl } from "pages/Editor/PropertyPane/DraggableListControl";
 import { DraggableListCard } from "components/propertyControls/DraggableListCard";
+import { Button, Tag } from "@appsmith/ads";
 
-const StyledPropertyPaneButtonWrapper = styled.div`
-  display: flex;
-  width: 100%;
-  justify-content: flex-end;
-  margin-top: 10px;
-`;
-
-const TabsWrapper = styled.div`
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-`;
-
-const NumberOfTabs = styled.div`
-  margin: 1% 0;
-`;
-
-type DroppableItem = BaseItemProps;
-
+// TODO: Fix this the next time the file is edited
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function AddTabButtonComponent({ widgetId }: any) {
   const dispatch = useDispatch();
   const addOption = () => {
@@ -45,18 +30,15 @@ function AddTabButtonComponent({ widgetId }: any) {
     });
   };
   return (
-    <StyledPropertyPaneButtonWrapper>
-      <StyledPropertyPaneButton
-        category={Category.secondary}
-        className="t--add-tab-btn"
-        icon="plus"
-        onClick={addOption}
-        size={Size.medium}
-        tag="button"
-        text="Add a Tab"
-        type="button"
-      />
-    </StyledPropertyPaneButtonWrapper>
+    <Button
+      className="self-end t--add-tab-btn"
+      kind="tertiary"
+      onClick={addOption}
+      size="sm"
+      startIcon="plus"
+    >
+      Add tab
+    </Button>
   );
 }
 
@@ -76,15 +58,15 @@ function TabControlComponent(props: RenderComponentProps<DroppableItem>) {
       {...props}
       deleteOption={deleteOption}
       isDelete
-      placeholder="Tab Title"
+      placeholder="Tab title"
     />
   );
 }
 
-type State = {
+interface State {
   focusedIndex: number | null;
   duplicateTabIds: string[];
-};
+}
 
 class TabControl extends BaseControl<ControlProps, State> {
   constructor(props: ControlProps) {
@@ -173,7 +155,11 @@ class TabControl extends BaseControl<ControlProps, State> {
     return menuItems;
   };
 
+  // TODO: Fix this the next time the file is edited
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   updateItems = (items: Array<Record<string, any>>) => {
+    // TODO: Fix this the next time the file is edited
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const tabsObj = items.reduce((obj: any, each: any, index: number) => {
       obj[each.id] = {
         ...each,
@@ -196,10 +182,10 @@ class TabControl extends BaseControl<ControlProps, State> {
   render() {
     const tabs = this.getTabItems();
     return (
-      <TabsWrapper>
-        <NumberOfTabs className="t--number-of-tabs">
-          {tabs.length} tabs
-        </NumberOfTabs>
+      <div className="flex flex-col">
+        <div className="t--number-of-tabs mb-1 ml-auto">
+          <Tag isClosable={false}>{tabs.length}</Tag>
+        </div>
         <DraggableListControl
           deleteOption={this.deleteOption}
           fixedHeight={370}
@@ -217,7 +203,7 @@ class TabControl extends BaseControl<ControlProps, State> {
         <AddTabButtonComponent
           widgetId={this.props.widgetProperties.widgetId}
         />
-      </TabsWrapper>
+      </div>
     );
   }
 

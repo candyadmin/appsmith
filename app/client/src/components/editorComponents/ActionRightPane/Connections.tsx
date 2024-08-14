@@ -1,25 +1,19 @@
 import React from "react";
-import { Collapsible } from ".";
-import {
-  Classes,
-  getTypographyByKey,
-  Icon,
-  IconSize,
-  Text,
-  TextType,
-} from "design-system";
+import { Text, TextType } from "@appsmith/ads-old";
 import styled from "styled-components";
 import LongArrowSVG from "assets/images/long-arrow-bottom.svg";
 import { useEntityLink } from "../Debugger/hooks/debuggerHooks";
-import AnalyticsUtil from "utils/AnalyticsUtil";
+import AnalyticsUtil from "ee/utils/AnalyticsUtil";
 import {
   createMessage,
   INCOMING_ENTITIES,
   NO_INCOMING_ENTITIES,
   NO_OUTGOING_ENTITIES,
   OUTGOING_ENTITIES,
-} from "@appsmith/constants/messages";
+} from "ee/constants/messages";
 import { Connection } from "../Debugger/EntityDependecies";
+import { Icon } from "@appsmith/ads";
+import Collapsible from "components/common/Collapsible";
 
 const ConnectionType = styled.span`
   span:nth-child(2) {
@@ -30,14 +24,12 @@ const ConnectionType = styled.span`
 
 const NoConnections = styled.div`
   width: 100%;
-  background-color: ${(props) =>
-    props.theme.colors.actionSidePane.noConnections};
   padding: ${(props) => props.theme.spaces[4] + 1}px
     ${(props) => props.theme.spaces[3]}px;
-
-  .${Classes.TEXT} {
-    color: ${(props) => props.theme.colors.actionSidePane.noConnectionsText};
-  }
+  background-color: var(--ads-v2-color-bg);
+  border-radius: var(--ads-v2-border-radius);
+  border: 1px solid var(--ads-v2-color-border);
+  color: var(--ads-v2-color-fg);
 `;
 
 const ConnectionFlow = styled.div`
@@ -53,30 +45,18 @@ const ConnectionFlow = styled.div`
 
 const ConnectionsContainer = styled.span`
   width: 100%;
-  background-color: ${(props) =>
-    props.theme.colors.actionSidePane.noConnections};
   display: flex;
   flex-wrap: wrap;
   padding: ${(props) => props.theme.spaces[2] + 1}px;
-  .connection {
-    border: 1px solid
-      ${(props) => props.theme.colors.actionSidePane.connectionBorder};
-    padding: ${(props) => props.theme.spaces[0] + 2}px
-      ${(props) => props.theme.spaces[1]}px;
-    ${getTypographyByKey("p3")}
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    cursor: pointer;
 
-    :hover {
-      border: 1px solid
-        ${(props) => props.theme.colors.actionSidePane.connectionHover};
-      color: ${(props) => props.theme.colors.actionSidePane.connectionHover};
-    }
-  }
+  background-color: var(--ads-v2-color-bg);
+  border-radius: var(--ads-v2-border-radius);
+  border: 1px solid var(--ads-v2-color-border);
+  color: var(--ads-v2-color-fg);
 `;
 
+// TODO: Fix this the next time the file is edited
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function Dependencies(props: any) {
   const { navigateToEntity } = useEntityLink();
 
@@ -107,19 +87,19 @@ function Dependencies(props: any) {
   );
 }
 
-type ConnectionsProps = {
+interface ConnectionsProps {
   actionName: string;
   entityDependencies: {
     inverseDependencies: string[];
     directDependencies: string[];
   } | null;
-};
+}
 
 function Connections(props: ConnectionsProps) {
   return (
     <Collapsible label="Relationships">
       <ConnectionType className="icon-text">
-        <Icon keepColors name="trending-flat" size={IconSize.MEDIUM} />
+        <Icon name="arrow-right-line" size="md" />
         <span className="connection-type">
           {createMessage(INCOMING_ENTITIES)}
         </span>
@@ -138,7 +118,7 @@ function Connections(props: ConnectionsProps) {
         <span className="connection-type">
           {createMessage(OUTGOING_ENTITIES)}
         </span>
-        <Icon keepColors name="trending-flat" size={IconSize.MEDIUM} />
+        <Icon name="arrow-right-line" size="md" />
       </ConnectionType>
       {/* Inverse dependencies */}
       <Dependencies

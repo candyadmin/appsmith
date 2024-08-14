@@ -1,8 +1,8 @@
-import { DataTree } from "entities/DataTree/dataTreeFactory";
+import type { DataTree } from "entities/DataTree/dataTreeTypes";
 import { get, set } from "lodash";
-import { isJSObject, isWidget } from "workers/Evaluation/evaluationUtils";
-import { DependencyMap } from "./DynamicBindingUtils";
-import WidgetFactory from "./WidgetFactory";
+import { isJSObject, isWidget } from "ee/workers/Evaluation/evaluationUtils";
+import type { DependencyMap } from "./DynamicBindingUtils";
+import WidgetFactory from "../WidgetProvider/factory";
 
 type GroupedDependencyMap = Record<string, DependencyMap>;
 
@@ -26,7 +26,7 @@ export const groupAndFilterDependantsMap = (
 
     entityPathDependants = entityPathDependants.concat(
       isJS_Object
-        ? /* include self-dependent properties for JsObjects 
+        ? /* include self-dependent properties for JsObjects
               e.g. {
                 "JsObject.internalFunc": [ "JsObject.fun1", "JsObject" ]
               }

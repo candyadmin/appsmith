@@ -1,14 +1,14 @@
 import React, { useEffect, useMemo } from "react";
 import Table from "./Table";
-import {
-  ColumnTypes,
+import type {
   CompactMode,
   ReactTableColumnProps,
   ReactTableFilter,
 } from "./Constants";
-import { Row } from "react-table";
+import { ColumnTypes } from "./Constants";
+import type { Row } from "react-table";
 
-import { EventType } from "constants/AppsmithActionConstants/ActionConstants";
+import type { EventType } from "constants/AppsmithActionConstants/ActionConstants";
 import equal from "fast-deep-equal/es6";
 
 export interface ColumnMenuOptionProps {
@@ -65,6 +65,8 @@ interface ReactTableComponentProps {
   columnSizeMap?: { [key: string]: number };
   handleResizeColumn: (columnSizeMap: { [key: string]: number }) => void;
   handleReorderColumn: (columnOrder: string[]) => void;
+  // TODO: Fix this the next time the file is edited
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   searchTableData: (searchKey: any) => void;
   filters?: ReactTableFilter[];
   applyFilter: (filters: ReactTableFilter[]) => void;

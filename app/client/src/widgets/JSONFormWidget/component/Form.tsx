@@ -1,5 +1,6 @@
 import equal from "fast-deep-equal/es6";
-import React, { PropsWithChildren, useEffect, useRef } from "react";
+import type { PropsWithChildren } from "react";
+import React, { useEffect, useRef } from "react";
 import styled from "styled-components";
 import { debounce, isEmpty } from "lodash";
 import { FormProvider, useForm } from "react-hook-form";
@@ -7,15 +8,16 @@ import { Text } from "@blueprintjs/core";
 import { klona } from "klona";
 
 import useFixedFooter from "./useFixedFooter";
-import {
-  BaseButton as Button,
-  ButtonStyleProps,
-} from "widgets/ButtonWidget/component";
+import type { ButtonStyleProps } from "widgets/ButtonWidget/component";
+import { BaseButton as Button } from "widgets/ButtonWidget/component";
 import { Colors } from "constants/Colors";
 import { FORM_PADDING_Y, FORM_PADDING_X } from "./styleConstants";
-import { ROOT_SCHEMA_KEY, Schema } from "../constants";
+import type { Schema } from "../constants";
+import { ROOT_SCHEMA_KEY } from "../constants";
 import { convertSchemaItemToFormData, schemaItemDefaultValue } from "../helper";
 
+// TODO: Fix this the next time the file is edited
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type FormProps<TValues = any> = PropsWithChildren<{
   backgroundColor?: string;
   disabledWhenInvalid?: boolean;
@@ -40,19 +42,19 @@ export type FormProps<TValues = any> = PropsWithChildren<{
   updateFormData: (values: TValues, skipConversion?: boolean) => void;
 }>;
 
-type StyledFormProps = {
+interface StyledFormProps {
   fixedFooter: boolean;
   scrollContents: boolean;
-};
+}
 
-type StyledFormBodyProps = {
+interface StyledFormBodyProps {
   stretchBodyVertically: boolean;
-};
+}
 
-type StyledFooterProps = {
+interface StyledFooterProps {
   fixedFooter: boolean;
   backgroundColor?: string;
-};
+}
 
 const BUTTON_WIDTH = 110;
 const FOOTER_BUTTON_GAP = 10;
@@ -93,7 +95,9 @@ const StyledForm = styled.form<StyledFormProps>`
   overflow-y: ${({ scrollContents }) => (scrollContents ? "auto" : "hidden")};
 `;
 
-const StyledTitle = styled(Text)`
+const StyledTitle = styled(Text)<{
+  children?: React.ReactNode;
+}>`
   font-weight: bold;
   font-size: ${TITLE_FONT_SIZE};
   word-break: break-word;
@@ -114,6 +118,8 @@ const RESET_OPTIONS = {
   keepErrors: true,
 };
 
+// TODO: Fix this the next time the file is edited
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function Form<TValues = any>(
   {
     backgroundColor,
@@ -228,6 +234,8 @@ function Form<TValues = any>(
          * race condition in ReactHookForm.
          */
         setTimeout(() => {
+          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+          // @ts-ignore
           reset(convertedFormData, RESET_OPTIONS);
         }, 0);
       }
@@ -284,6 +292,7 @@ function Form<TValues = any>(
               <StyledResetButtonWrapper>
                 <Button
                   {...resetButtonStyles}
+                  className="t--jsonform-reset-btn"
                   onClick={(e) => onReset(schema, e)}
                   text={resetButtonLabel}
                   type="reset"
@@ -292,6 +301,7 @@ function Form<TValues = any>(
             )}
             <Button
               {...submitButtonStyles}
+              className="t--jsonform-submit-btn"
               disabled={disabledWhenInvalid && isFormInValid}
               loading={isSubmitting}
               onClick={onSubmit}
@@ -305,4 +315,6 @@ function Form<TValues = any>(
   );
 }
 
+// TODO: Fix this the next time the file is edited
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export default React.forwardRef<HTMLDivElement, FormProps<any>>(Form);

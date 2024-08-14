@@ -1,8 +1,6 @@
 import { createReducer } from "utils/ReducerUtils";
-import {
-  ReduxAction,
-  ReduxActionTypes,
-} from "@appsmith/constants/ReduxActionConstants";
+import type { ReduxAction } from "ee/constants/ReduxActionConstants";
+import { ReduxActionTypes } from "ee/constants/ReduxActionConstants";
 
 const initialState: ModalActionReduxState = {
   modals: [],
@@ -26,11 +24,11 @@ export enum ModalType {
 }
 
 // some meta-data about the Modal.
-export type ModalInfo = {
+export interface ModalInfo {
   name: string;
   modalOpen: boolean;
   modalType: ModalType;
-};
+}
 export interface ModalActionReduxState {
   modals: ModalInfo[];
 }

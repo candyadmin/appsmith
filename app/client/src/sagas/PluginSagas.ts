@@ -1,21 +1,22 @@
 import { all, takeEvery, call, put, select } from "redux-saga/effects";
+import type { ReduxAction } from "ee/constants/ReduxActionConstants";
 import {
   ReduxActionTypes,
   ReduxActionErrorTypes,
-  ReduxAction,
-} from "@appsmith/constants/ReduxActionConstants";
-import PluginsApi, { DefaultPlugin, PluginFormPayload } from "api/PluginApi";
+} from "ee/constants/ReduxActionConstants";
+import type { DefaultPlugin, PluginFormPayload } from "api/PluginApi";
+import PluginsApi from "api/PluginApi";
 import { validateResponse } from "sagas/ErrorSagas";
-import { getCurrentWorkspaceId } from "@appsmith/selectors/workspaceSelectors";
+import { getCurrentWorkspaceId } from "ee/selectors/selectedWorkspaceSelectors";
 import {
   getActions,
   getDatasources,
   getPlugin,
   getPluginForm,
   getPlugins,
-} from "selectors/entitiesSelector";
-import { Datasource } from "entities/Datasource";
-import { Plugin } from "api/PluginApi";
+} from "ee/selectors/entitiesSelector";
+import type { Datasource } from "entities/Datasource";
+import type { Plugin } from "api/PluginApi";
 import {
   fetchPluginFormConfigsSuccess,
   fetchPluginFormConfigSuccess,
@@ -27,22 +28,30 @@ import {
   defaultActionSettings,
   defaultDatasourceFormButtonConfig,
 } from "constants/AppsmithActionConstants/ActionConstants";
-import { ApiResponse } from "api/ApiResponses";
+import type { ApiResponse } from "api/ApiResponses";
 import PluginApi from "api/PluginApi";
 import log from "loglevel";
-import { getGraphQLPlugin, PluginType } from "entities/Action";
 import {
+  getAppsmithAIPlugin,
+  getGraphQLPlugin,
+  PluginType,
+} from "entities/Action";
+import type {
   FormEditorConfigs,
   FormSettingsConfigs,
   FormDependencyConfigs,
   FormDatasourceButtonConfigs,
 } from "utils/DynamicBindingUtils";
-import { ActionDataState } from "reducers/entityReducers/actionsReducer";
+import type { ActionDataState } from "ee/reducers/entityReducers/actionsReducer";
+import { getFromServerWhenNoPrefetchedResult } from "./helper";
 
 function* fetchPluginsSaga(
-  action: ReduxAction<{ workspaceId?: string } | undefined>,
+  action: ReduxAction<
+    { workspaceId?: string; plugins?: ApiResponse<Plugin[]> } | undefined
+  >,
 ) {
   try {
+    const plugins = action.payload?.plugins;
     let workspaceId: string = yield select(getCurrentWorkspaceId);
     if (action.payload?.workspaceId) workspaceId = action.payload?.workspaceId;
 
@@ -50,9 +59,11 @@ function* fetchPluginsSaga(
       throw Error("Workspace id does not exist");
     }
     const pluginsResponse: ApiResponse<Plugin[]> = yield call(
-      PluginsApi.fetchPlugins,
-      workspaceId,
+      getFromServerWhenNoPrefetchedResult,
+      plugins,
+      () => call(PluginsApi.fetchPlugins, workspaceId),
     );
+
     const isValid: boolean = yield validateResponse(pluginsResponse);
     if (isValid) {
       yield put({
@@ -68,7 +79,10 @@ function* fetchPluginsSaga(
   }
 }
 
-function* fetchPluginFormConfigsSaga() {
+function* fetchPluginFormConfigsSaga(action?: {
+  payload?: { pluginFormConfigs?: ApiResponse<PluginFormPayload[]> };
+}) {
+  const pluginFormConfigs = action?.payload?.pluginFormConfigs;
   try {
     const datasources: Datasource[] = yield select(getDatasources);
     const plugins: Plugin[] = yield select(getPlugins);
@@ -80,6 +94,7 @@ function* fetchPluginFormConfigsSaga() {
     const apiPlugin = plugins.find((plugin) => plugin.type === PluginType.API);
     const jsPlugin = plugins.find((plugin) => plugin.type === PluginType.JS);
     const graphqlPlugin = getGraphQLPlugin(plugins);
+    const appsmithAIPlugin = getAppsmithAIPlugin(plugins);
     if (apiPlugin) {
       pluginIdFormsToFetch.add(apiPlugin.id);
     }
@@ -88,19 +103,42 @@ function* fetchPluginFormConfigsSaga() {
       pluginIdFormsToFetch.add(graphqlPlugin.id);
     }
 
+    if (appsmithAIPlugin) {
+      pluginIdFormsToFetch.add(appsmithAIPlugin.id);
+    }
+
     const actions: ActionDataState = yield select(getActions);
     const actionPluginIds = actions.map((action) => action.config.pluginId);
     for (const pluginId of actionPluginIds) {
       pluginIdFormsToFetch.add(pluginId);
     }
-
-    const pluginFormData: PluginFormPayload[] = [];
-    const pluginFormResponses: ApiResponse<PluginFormPayload>[] = yield all(
-      [...pluginIdFormsToFetch].map((id) =>
-        call(PluginsApi.fetchFormConfig, id),
+    const pluginCalls = [...pluginIdFormsToFetch].map((id) =>
+      call(
+        getFromServerWhenNoPrefetchedResult,
+        // Set the data if it exists in the prefetched data
+        // This is to avoid making a call to the server for the data
+        // TODO: Fix this the next time the file is edited
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        pluginFormConfigs?.data?.[id as any]
+          ? {
+              ...pluginFormConfigs,
+              // TODO: Fix this the next time the file is edited
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              data: pluginFormConfigs?.data?.[id as any],
+            }
+          : undefined,
+        // If the data does not exist in the prefetched data, make a call to the server
+        () => call(PluginsApi.fetchFormConfig, id),
       ),
     );
-    for (const response of pluginFormResponses) {
+
+    const pluginFormResponses: ApiResponse<PluginFormPayload>[] =
+      yield all(pluginCalls);
+
+    const pluginFormData: PluginFormPayload[] = [];
+
+    for (let i = 0; i < pluginFormResponses.length; i++) {
+      const response = pluginFormResponses[i];
       yield validateResponse(response);
       pluginFormData.push(response.data);
     }
@@ -108,6 +146,8 @@ function* fetchPluginFormConfigsSaga() {
     if (jsPlugin) {
       pluginIdFormsToFetch.add(jsPlugin.id);
     }
+    // TODO: Fix this the next time the file is edited
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const formConfigs: Record<string, any[]> = {};
     const editorConfigs: FormEditorConfigs = {};
     const settingConfigs: FormSettingsConfigs = {};
@@ -123,35 +163,39 @@ function* fetchPluginFormConfigsSaga() {
         dependencies[pluginId] = defaultActionDependenciesConfig[plugin.type];
       } else {
         // Datasource form always use server's copy
-        formConfigs[pluginId] = pluginFormData[index].form;
-        // Action editor form if not available use default
-        if (plugin && !pluginFormData[index].editor) {
-          editorConfigs[pluginId] = defaultActionEditorConfigs[plugin.type];
-        } else {
-          editorConfigs[pluginId] = pluginFormData[index].editor;
-        }
-        // Action settings form if not available use default
-        if (plugin && !pluginFormData[index].setting) {
-          settingConfigs[pluginId] = defaultActionSettings[plugin.type];
-        } else {
-          settingConfigs[pluginId] = pluginFormData[index].setting;
-        }
-        // Action dependencies config if not available use default
-        if (plugin && !pluginFormData[index].dependencies) {
-          dependencies[pluginId] = defaultActionDependenciesConfig[plugin.type];
-        } else {
-          dependencies[pluginId] = pluginFormData[index].dependencies;
-        }
-        // Datasource form buttons config if not available use default
-        if (plugin && !pluginFormData[index].formButton) {
-          datasourceFormButtonConfigs[pluginId] =
-            defaultDatasourceFormButtonConfig[plugin.type];
-        } else {
-          datasourceFormButtonConfigs[pluginId] =
-            pluginFormData[index].formButton;
+        if (!!pluginFormData[index]) {
+          formConfigs[pluginId] = pluginFormData[index].form;
+          // Action editor form if not available use default
+          if (plugin && !pluginFormData[index].editor) {
+            editorConfigs[pluginId] = defaultActionEditorConfigs[plugin.type];
+          } else {
+            editorConfigs[pluginId] = pluginFormData[index].editor;
+          }
+          // Action settings form if not available use default
+          if (plugin && !pluginFormData[index].setting) {
+            settingConfigs[pluginId] = defaultActionSettings[plugin.type];
+          } else {
+            settingConfigs[pluginId] = pluginFormData[index].setting;
+          }
+          // Action dependencies config if not available use default
+          if (plugin && !pluginFormData[index].dependencies) {
+            dependencies[pluginId] =
+              defaultActionDependenciesConfig[plugin.type];
+          } else {
+            dependencies[pluginId] = pluginFormData[index].dependencies;
+          }
+          // Datasource form buttons config if not available use default
+          if (plugin && !pluginFormData[index].formButton) {
+            datasourceFormButtonConfigs[pluginId] =
+              defaultDatasourceFormButtonConfig[plugin.type];
+          } else {
+            datasourceFormButtonConfigs[pluginId] =
+              pluginFormData[index].formButton;
+          }
         }
       }
     });
+
     yield put(
       fetchPluginFormConfigsSuccess({
         formConfigs,
@@ -162,7 +206,6 @@ function* fetchPluginFormConfigsSaga() {
       }),
     );
   } catch (error) {
-    log.error(error);
     yield put({
       type: ReduxActionErrorTypes.FETCH_PLUGIN_FORM_CONFIGS_ERROR,
       payload: { error },
@@ -178,9 +221,8 @@ export function* checkAndGetPluginFormConfigsSaga(pluginId: string) {
       pluginId,
     );
     if (!formConfig) {
-      const formConfigResponse: ApiResponse<PluginFormPayload> = yield PluginApi.fetchFormConfig(
-        pluginId,
-      );
+      const formConfigResponse: ApiResponse<PluginFormPayload> =
+        yield PluginApi.fetchFormConfig(pluginId);
       yield validateResponse(formConfigResponse);
       if (!formConfigResponse.data.setting) {
         formConfigResponse.data.setting = defaultActionSettings[plugin.type];
@@ -214,7 +256,10 @@ export function* checkAndGetPluginFormConfigsSaga(pluginId: string) {
   }
 }
 
-type GetPluginFormConfigParams = { id: string; type: string };
+interface GetPluginFormConfigParams {
+  id: string;
+  type: string;
+}
 
 function* getPluginFormConfig({ id }: GetPluginFormConfigParams) {
   yield call(checkAndGetPluginFormConfigsSaga, id);

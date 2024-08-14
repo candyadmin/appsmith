@@ -1,4 +1,5 @@
-import { MutableRefObject, MouseEvent, useEffect } from "react";
+import type { MutableRefObject, MouseEvent } from "react";
+import { useEffect } from "react";
 
 export default (
   currentRef: MutableRefObject<HTMLElement | null>,
@@ -7,8 +8,10 @@ export default (
 ) => {
   useEffect(() => {
     let clickCount = 0;
-    let timeoutId = 0;
+    let timeoutId: ReturnType<typeof setTimeout>;
 
+    // TODO: Fix this the next time the file is edited
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const handleClick = (e: any) => {
       if (!doubleClk) {
         singleClk(e);

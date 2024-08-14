@@ -2,17 +2,22 @@ import { Doc, Map, UndoManager } from "yjs";
 import { captureException } from "@sentry/react";
 import { diff as deepDiff, applyChange, revertChange } from "deep-diff";
 
-import { processDiff, DSLDiff, getPathsFromDiff } from "./replayUtils";
-import { CanvasWidgetsReduxState } from "reducers/entityReducers/canvasWidgetsReducer";
+import type { DSLDiff } from "./replayUtils";
+import { processDiff, getPathsFromDiff } from "./replayUtils";
+import type { CanvasWidgetsReduxState } from "reducers/entityReducers/canvasWidgetsReducer";
 
 const _DIFF_ = "diff";
 type ReplayType = "UNDO" | "REDO";
 
 export default class ReplayDSL {
+  // TODO: Fix this the next time the file is edited
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private diffMap: any;
   private undoManager: UndoManager;
   private dsl: CanvasWidgetsReduxState;
   private prevRedoDiff: Array<DSLDiff> | undefined;
+  // TODO: Fix this the next time the file is edited
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   logs: any[] = [];
 
   constructor(widgets: CanvasWidgetsReduxState) {

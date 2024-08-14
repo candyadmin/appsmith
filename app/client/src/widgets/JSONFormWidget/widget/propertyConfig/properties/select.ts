@@ -1,28 +1,30 @@
 import { FieldType } from "widgets/JSONFormWidget/constants";
-import {
-  HiddenFnParams,
-  getSchemaItem,
-  getAutocompleteProperties,
-} from "../helper";
-import { JSONFormWidgetProps } from "../..";
-import { SelectFieldProps } from "widgets/JSONFormWidget/fields/SelectField";
-import {
-  ValidationResponse,
-  ValidationTypes,
-} from "constants/WidgetValidation";
+import type { HiddenFnParams } from "../helper";
+import { getSchemaItem, getAutocompleteProperties } from "../helper";
+import type { JSONFormWidgetProps } from "../..";
+import type { SelectFieldProps } from "widgets/JSONFormWidget/fields/SelectField";
+import type { ValidationResponse } from "constants/WidgetValidation";
+import { ValidationTypes } from "constants/WidgetValidation";
 import { EvaluationSubstitutionType } from "entities/DataTree/dataTreeFactory";
-import { AutocompleteDataType } from "utils/autocomplete/CodemirrorTernService";
+import { AutocompleteDataType } from "utils/autocomplete/AutocompleteDataType";
 
 export function defaultOptionValueValidation(
   inputValue: unknown,
   props: JSONFormWidgetProps,
+  // TODO: Fix this the next time the file is edited
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   _: any,
 ): ValidationResponse {
-  const DEFAULT_ERROR_MESSAGE =
-    'value should match: string | { "label": "label1", "value": "value1" }';
+  const DEFAULT_ERROR_MESSAGE = {
+    name: "TypeError",
+    message:
+      'value should match: string | { "label": "label1", "value": "value1" }',
+  };
   let value = inputValue;
 
   const hasLabelValueProperties = (
+    // TODO: Fix this the next time the file is edited
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     obj: any,
   ): obj is { value: string | number; label: string } => {
     return (
@@ -40,7 +42,7 @@ export function defaultOptionValueValidation(
     return {
       isValid: true,
       parsed: inputValue,
-      messages: [""],
+      messages: [{ name: "", message: "" }],
     };
   }
 
@@ -55,7 +57,7 @@ export function defaultOptionValueValidation(
     return {
       isValid: true,
       parsed: value,
-      messages: [""],
+      messages: [{ name: "", message: "" }],
     };
   }
 
@@ -64,7 +66,7 @@ export function defaultOptionValueValidation(
     return {
       isValid: true,
       parsed: value,
-      messages: [""],
+      messages: [{ name: "", message: "" }],
     };
   }
 
@@ -81,7 +83,7 @@ const PROPERTIES = {
       {
         propertyName: "defaultValue",
         helpText: "Selects the option with value by default",
-        label: "Default Selected Value",
+        label: "Default selected value",
         controlType: "JSON_FORM_COMPUTE_VALUE",
         placeholderText: '{ "label": "Option1", "value": "Option2" }',
         isBindProperty: true,
@@ -121,7 +123,7 @@ const PROPERTIES = {
     events: [
       {
         propertyName: "onOptionChange",
-        helpText: "Triggers an action when a user selects an option",
+        helpText: "when a user selects an option",
         label: "onOptionChange",
         controlType: "ACTION_SELECTOR",
         isJSConvertible: true,
@@ -136,7 +138,7 @@ const PROPERTIES = {
     searchAndFilters: [
       {
         propertyName: "isFilterable",
-        label: "Allow Searching",
+        label: "Allow searching",
         helpText: "Makes the dropdown list filterable",
         controlType: "SWITCH",
         isJSConvertible: true,
@@ -151,7 +153,7 @@ const PROPERTIES = {
       {
         propertyName: "serverSideFiltering",
         helpText: "Enables server side filtering of the data",
-        label: "Server Side Filtering",
+        label: "Server side filtering",
         controlType: "SWITCH",
         isJSConvertible: true,
         isBindProperty: true,

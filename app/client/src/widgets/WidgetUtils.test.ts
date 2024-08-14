@@ -2,7 +2,7 @@ import {
   ButtonBorderRadiusTypes,
   ButtonVariantTypes,
 } from "components/constants";
-import { PropertyHookUpdates } from "constants/PropertyControlConstants";
+import type { PropertyUpdates } from "WidgetProvider/constants";
 import {
   RenderModes,
   TextSizes,
@@ -10,8 +10,8 @@ import {
 } from "constants/WidgetConstants";
 import { remove } from "lodash";
 import { getTheme, ThemeMode } from "selectors/themeSelectors";
-import { WidgetProps } from "./BaseWidget";
-import { rgbaMigrationConstantV56 } from "./constants";
+import type { WidgetProps } from "./BaseWidget";
+import { rgbaMigrationConstantV56 } from "../WidgetProvider/constants";
 import {
   borderRadiusUtility,
   replaceRgbaMigrationConstant,
@@ -23,8 +23,10 @@ import {
   sanitizeKey,
   shouldUpdateWidgetHeightAutomatically,
   isAutoHeightEnabledForWidget,
+  isAutoHeightEnabledForWidgetWithLimits,
   getWidgetMaxAutoHeight,
   getWidgetMinAutoHeight,
+  isCompactMode,
 } from "./WidgetUtils";
 import {
   getCustomTextColor,
@@ -344,6 +346,8 @@ describe("Test widget utility functions", () => {
     // Case 1:
     expect(
       boxShadowMigration(
+        // TODO: Fix this the next time the file is edited
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         tableWidgetProps.dynamicBindingPathList as any,
         "action",
         "0px 0px 4px 3px rgba(0, 0, 0, 0.25)",
@@ -370,8 +374,12 @@ describe("Test widget utility functions", () => {
     );
     // Assign values to boxShadow and boxShadowColor
     tableWidgetProps.primaryColumns.action.boxShadow = "VARIANT1";
+    // TODO: Fix this the next time the file is edited
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     tableWidgetProps.primaryColumns.action.boxShadowColor = "blue" as any;
     let newBoxShadow = boxShadowMigration(
+      // TODO: Fix this the next time the file is edited
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       tableWidgetProps.dynamicBindingPathList as any,
       "action",
       tableWidgetProps.primaryColumns.action.boxShadow,
@@ -380,9 +388,13 @@ describe("Test widget utility functions", () => {
     expect(newBoxShadow).toEqual("0px 0px 4px 3px blue");
 
     tableWidgetProps.primaryColumns.action.boxShadow = "VARIANT1";
+    // TODO: Fix this the next time the file is edited
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     tableWidgetProps.primaryColumns.action.boxShadowColor = "" as any; // Add empty boxShadowColor.
 
     newBoxShadow = boxShadowMigration(
+      // TODO: Fix this the next time the file is edited
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       tableWidgetProps.dynamicBindingPathList as any,
       "action",
       tableWidgetProps.primaryColumns.action.boxShadow,
@@ -410,6 +422,8 @@ describe("Test widget utility functions", () => {
       "orange",
     ];
     newBoxShadow = boxShadowMigration(
+      // TODO: Fix this the next time the file is edited
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       tableWidgetProps.dynamicBindingPathList as any,
       "action",
       tableWidgetProps.primaryColumns.action.boxShadow,
@@ -418,10 +432,14 @@ describe("Test widget utility functions", () => {
     expect(newBoxShadow).toEqual("0px 0px 4px 3px orange");
 
     tableWidgetProps.primaryColumns.action.boxShadow = "VARIANT1";
+    // TODO: Fix this the next time the file is edited
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     tableWidgetProps.primaryColumns.action.boxShadowColor = ["", "", ""] as any; // Add empty boxShadowColor when dynamic
 
     // Add empty boxShadowColor.
     newBoxShadow = boxShadowMigration(
+      // TODO: Fix this the next time the file is edited
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       tableWidgetProps.dynamicBindingPathList as any,
       "action",
       tableWidgetProps.primaryColumns.action.boxShadow,
@@ -435,8 +453,10 @@ type composePropertyUpdateHookInputType = Array<
   (
     props: unknown,
     propertyPath: string,
+    // TODO: Fix this the next time the file is edited
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     propertyValue: any,
-  ) => PropertyHookUpdates[] | undefined
+  ) => PropertyUpdates[] | undefined
 >;
 describe("composePropertyUpdateHook", () => {
   it("should test that it's returning a function", () => {
@@ -452,7 +472,7 @@ describe("composePropertyUpdateHook", () => {
 
     expect(
       composePropertyUpdateHook(
-        (input as unknown) as composePropertyUpdateHookInputType,
+        input as unknown as composePropertyUpdateHookInputType,
       )(null, "", null),
     ).toEqual(expected);
   });
@@ -464,12 +484,14 @@ describe("composePropertyUpdateHook", () => {
 
     expect(
       composePropertyUpdateHook(
-        (input as unknown) as composePropertyUpdateHookInputType,
+        input as unknown as composePropertyUpdateHookInputType,
       )(null, "", null),
     ).toEqual(expected);
   });
 
   it("should test that calling the function without any function returns undefined", () => {
+    // TODO: Fix this the next time the file is edited
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const input: any = [];
 
     const expected = undefined;
@@ -499,7 +521,7 @@ describe("Auto Height Utils", () => {
       dynamicHeight: "AUTO_HEIGHT_WITH_LIMITS",
     };
 
-    const result = isAutoHeightEnabledForWidget(props, true);
+    const result = isAutoHeightEnabledForWidgetWithLimits(props);
     expect(result).toBe(true);
   });
   it("should return false if withLimits is true and widget has AUTO_HEIGHT", () => {
@@ -508,7 +530,7 @@ describe("Auto Height Utils", () => {
       dynamicHeight: "AUTO_HEIGHT",
     };
 
-    const result = isAutoHeightEnabledForWidget(props, true);
+    const result = isAutoHeightEnabledForWidgetWithLimits(props);
     expect(result).toBe(false);
   });
   it("should return true if withLimits is false and widget has AUTO_HEIGHT", () => {
@@ -517,7 +539,7 @@ describe("Auto Height Utils", () => {
       dynamicHeight: "AUTO_HEIGHT",
     };
 
-    const result = isAutoHeightEnabledForWidget(props, false);
+    const result = isAutoHeightEnabledForWidget(props);
     expect(result).toBe(true);
   });
 
@@ -527,7 +549,7 @@ describe("Auto Height Utils", () => {
       dynamicHeight: "FIXED",
     };
 
-    const result = isAutoHeightEnabledForWidget(props, false);
+    const result = isAutoHeightEnabledForWidget(props);
     expect(result).toBe(false);
   });
   it("should return false withLimits is true and widget has FIXED", () => {
@@ -536,7 +558,7 @@ describe("Auto Height Utils", () => {
       dynamicHeight: "FIXED",
     };
 
-    const result = isAutoHeightEnabledForWidget(props, true);
+    const result = isAutoHeightEnabledForWidgetWithLimits(props);
     expect(result).toBe(false);
   });
   it("should return 9000 if widget has AUTO_HEIGHT", () => {
@@ -694,5 +716,11 @@ describe("Should Update Widget Height Automatically?", () => {
 
     const result = shouldUpdateWidgetHeightAutomatically(input, props);
     expect(result).toStrictEqual(expected);
+  });
+  it("should return correct value for isCompactMode", () => {
+    const compactHeight = 40;
+    const unCompactHeight = 41;
+    expect(isCompactMode(compactHeight)).toBeTruthy();
+    expect(isCompactMode(unCompactHeight)).toBeFalsy();
   });
 });

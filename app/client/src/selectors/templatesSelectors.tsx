@@ -1,11 +1,20 @@
-import { FilterKeys, Template } from "api/TemplatesApi";
+import type { Workspace } from "ee/constants/workspaceConstants";
+import type { AppState } from "ee/reducers";
+import { getDefaultPlugins } from "ee/selectors/entitiesSelector";
+import { getFetchedWorkspaces } from "ee/selectors/workspaceSelectors";
+import { hasCreateNewAppPermission } from "ee/utils/permissionHelpers";
+import type { FilterKeys, Template } from "api/TemplatesApi";
+import {
+  BUILDING_BLOCK_EXPLORER_TYPE,
+  DEFAULT_COLUMNS_FOR_EXPLORER_BUILDING_BLOCKS,
+  DEFAULT_ROWS_FOR_EXPLORER_BUILDING_BLOCKS,
+  WIDGET_TAGS,
+} from "constants/WidgetConstants";
 import Fuse from "fuse.js";
-import { AppState } from "@appsmith/reducers";
+import type { Filter } from "pages/Templates/TemplateFilters";
+import { TEMPLATE_BUILDING_BLOCKS_FILTER_FUNCTION_VALUE } from "pages/Templates/constants";
 import { createSelector } from "reselect";
-import { getWorkspaceCreateApplication } from "./applicationSelectors";
-import { getWidgetCards } from "./editorSelectors";
-import { getDefaultPlugins } from "./entitiesSelector";
-import { Filter } from "pages/Templates/Filters";
+import type { WidgetCardProps } from "widgets/BaseWidget";
 
 const fuzzySearchOptions = {
   keys: ["title", "id", "datasources", "widgets"],
@@ -21,19 +30,12 @@ export const isImportingTemplateSelector = (state: AppState) =>
   state.ui.templates.isImportingTemplate;
 export const isImportingTemplateToAppSelector = (state: AppState) =>
   state.ui.templates.isImportingTemplateToApp;
+export const currentForkingBuildingBlockName = (state: AppState) =>
+  state.ui.templates.currentForkingTemplateInfo.buildingBlock.name;
+export const buildingBlocksSourcePageIdSelector = (state: AppState) =>
+  state.ui.templates.buildingBlockSourcePageId;
 export const showTemplateNotificationSelector = (state: AppState) =>
   state.ui.templates.templateNotificationSeen;
-
-export const getWorkspaceForTemplates = createSelector(
-  getWorkspaceCreateApplication,
-  (workspaceList) => {
-    if (workspaceList.length) {
-      return workspaceList[0];
-    }
-
-    return null;
-  },
-);
 
 export const getTemplateFilterSelector = (state: AppState) =>
   state.ui.templates.filters;
@@ -59,6 +61,42 @@ export const getTemplateById = (id: string) => (state: AppState) => {
 export const getActiveTemplateSelector = (state: AppState) =>
   state.ui.templates.activeTemplate;
 
+export const getBuildingBlocksList = (state: AppState) => {
+  return state.ui.templates.templates.filter(
+    (template) =>
+      template.functions[0] === TEMPLATE_BUILDING_BLOCKS_FILTER_FUNCTION_VALUE,
+  );
+};
+
+export const getBuildingBlockExplorerCards = createSelector(
+  getBuildingBlocksList,
+  (buildingBlocks) => {
+    const adjustedBuildingBlocks: WidgetCardProps[] = buildingBlocks.map(
+      (buildingBlock) => ({
+        rows:
+          buildingBlock.templateGridRowSize ||
+          DEFAULT_ROWS_FOR_EXPLORER_BUILDING_BLOCKS,
+        columns:
+          buildingBlock.templateGridColumnSize ||
+          DEFAULT_COLUMNS_FOR_EXPLORER_BUILDING_BLOCKS,
+        type: BUILDING_BLOCK_EXPLORER_TYPE,
+        displayName: buildingBlock.title,
+        icon:
+          buildingBlock.screenshotUrls.length > 1
+            ? buildingBlock.screenshotUrls[1]
+            : buildingBlock.screenshotUrls[0],
+        thumbnail:
+          buildingBlock.screenshotUrls.length > 1
+            ? buildingBlock.screenshotUrls[1]
+            : buildingBlock.screenshotUrls[0],
+        tags: [WIDGET_TAGS.BUILDING_BLOCKS],
+      }),
+    );
+
+    return adjustedBuildingBlocks;
+  },
+);
+
 export const getFilteredTemplateList = createSelector(
   getTemplatesSelector,
   getTemplateFilterSelector,
@@ -66,12 +104,21 @@ export const getFilteredTemplateList = createSelector(
   (templates, templatesFilters, numberOfFiltersApplied) => {
     const result: Template[] = [];
     const activeTemplateIds: string[] = [];
+    const ALL_TEMPLATES_FILTER_VALUE = "All";
 
     if (!numberOfFiltersApplied) {
       return templates;
     }
 
     if (!Object.keys(templatesFilters).length) {
+      return templates;
+    }
+
+    // If only "All Templates" is selected, return all templates
+    if (
+      numberOfFiltersApplied === 1 &&
+      templatesFilters.functions?.includes(ALL_TEMPLATES_FILTER_VALUE)
+    ) {
       return templates;
     }
 
@@ -143,20 +190,18 @@ export const templatesDatasourceFiltersSelector = createSelector(
   },
 );
 
-export const templatesFiltersSelector = (state: AppState) =>
+export const allTemplatesFiltersSelector = (state: AppState) =>
   state.ui.templates.allFilters;
 
 // Get all filters which is associated with atleast one template
 // If no template is associated with a filter, then the filter shouldn't be in the filter list
 export const getFilterListSelector = createSelector(
-  getWidgetCards,
-  templatesDatasourceFiltersSelector,
   getTemplatesSelector,
-  templatesFiltersSelector,
-  (widgetConfigs, allDatasources, templates, allTemplateFilters) => {
+  allTemplatesFiltersSelector,
+  (templates, allTemplateFilters) => {
+    const FUNCTIONS_FILTER = "functions";
     const filters: Record<string, Filter[]> = {
-      datasources: [],
-      functions: [],
+      [FUNCTIONS_FILTER]: [],
     };
 
     const allFunctions = allTemplateFilters.functions.map((item) => {
@@ -191,29 +236,34 @@ export const getFilterListSelector = createSelector(
       });
     };
 
-    templates.map((template) => {
-      filterFilters("datasources", allDatasources, template);
-      filterFilters("functions", allFunctions, template);
+    templates.forEach((template) => {
+      filterFilters(FUNCTIONS_FILTER, allFunctions, template);
     });
-
     return filters;
   },
 );
 
 export const getForkableWorkspaces = createSelector(
-  getWorkspaceCreateApplication,
-  (workspaces) => {
-    return workspaces.map((workspace) => {
-      return {
-        label: workspace.workspace.name,
-        value: workspace.workspace.id,
-      };
-    });
+  getFetchedWorkspaces,
+  (workspaces: Workspace[]) => {
+    return workspaces
+      .filter((workspace) =>
+        hasCreateNewAppPermission(workspace.userPermissions ?? []),
+      )
+      .map((workspace) => {
+        return {
+          label: workspace.name,
+          value: workspace.id,
+        };
+      });
   },
 );
 
-export const templateModalOpenSelector = (state: AppState) =>
-  state.ui.templates.showTemplatesModal;
+export const templateModalSelector = (state: AppState) =>
+  state.ui.templates.templatesModal;
 
 export const templatesCountSelector = (state: AppState) =>
   state.ui.templates.templates.length;
+
+export const activeLoadingTemplateId = (state: AppState) =>
+  state.ui.templates.activeLoadingTemplateId;

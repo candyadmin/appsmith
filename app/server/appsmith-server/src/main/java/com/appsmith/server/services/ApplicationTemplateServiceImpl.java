@@ -1,39 +1,42 @@
 package com.appsmith.server.services;
 
 import com.appsmith.server.configurations.CloudServicesConfig;
-import com.appsmith.server.helpers.ResponseUtils;
-import com.appsmith.server.repositories.ApplicationTemplateRepository;
+import com.appsmith.server.exports.internal.ExportService;
+import com.appsmith.server.helpers.CacheableTemplateHelper;
+import com.appsmith.server.imports.internal.ImportService;
 import com.appsmith.server.services.ce.ApplicationTemplateServiceCEImpl;
 import com.appsmith.server.solutions.ApplicationPermission;
 import com.appsmith.server.solutions.ImportExportApplicationService;
 import com.appsmith.server.solutions.ReleaseNotesService;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.mongodb.core.ReactiveMongoTemplate;
-import org.springframework.data.mongodb.core.convert.MongoConverter;
 import org.springframework.stereotype.Service;
-import reactor.core.scheduler.Scheduler;
-
-import javax.validation.Validator;
 
 @Service
 @Slf4j
-public class ApplicationTemplateServiceImpl extends ApplicationTemplateServiceCEImpl implements ApplicationTemplateService {
-    @Autowired
-    public ApplicationTemplateServiceImpl(Scheduler scheduler,
-                                          Validator validator,
-                                          MongoConverter mongoConverter,
-                                          ReactiveMongoTemplate reactiveMongoTemplate,
-                                          ApplicationTemplateRepository repository,
-                                          CloudServicesConfig cloudServicesConfig,
+public class ApplicationTemplateServiceImpl extends ApplicationTemplateServiceCEImpl
+        implements ApplicationTemplateService {
+
+    public ApplicationTemplateServiceImpl(
+            CloudServicesConfig cloudServicesConfig,
                                           ReleaseNotesService releaseNotesService,
                                           ImportExportApplicationService importExportApplicationService,
                                           AnalyticsService analyticsService,
                                           UserDataService userDataService,
                                           ApplicationService applicationService,
-                                          ResponseUtils responseUtils,
-                                          ApplicationPermission applicationPermission) {
-        super(scheduler,validator,mongoConverter,reactiveMongoTemplate,repository,cloudServicesConfig, releaseNotesService, importExportApplicationService, analyticsService,
-                userDataService, applicationService, responseUtils, applicationPermission);
+            ApplicationPermission applicationPermission,
+            ObjectMapper objectMapper,
+            SessionUserService sessionUserService,
+            CacheableTemplateHelper cacheableTemplateHelper) {
+        super(
+                cloudServicesConfig,
+                releaseNotesService,
+                importService,
+                exportService,
+                analyticsService,
+                applicationService,
+                applicationPermission,
+                objectMapper,
+                sessionUserService,
+                cacheableTemplateHelper);
     }
 }

@@ -1,17 +1,22 @@
-import { matchDatasourcePath } from "constants/routes";
-import { Log } from "entities/AppsmithConsole";
-import { DataTree, DataTreeWidget } from "entities/DataTree/dataTreeFactory";
+import type { Log } from "entities/AppsmithConsole";
+import type { WidgetEntity } from "ee/entities/DataTree/types";
+import type { DataTree } from "entities/DataTree/dataTreeTypes";
 import { isEmpty } from "lodash";
-import { AppState } from "@appsmith/reducers";
-import { CanvasWidgetsReduxState } from "reducers/entityReducers/canvasWidgetsReducer";
+import type { AppState } from "ee/reducers";
+import type { CanvasWidgetsReduxState } from "reducers/entityReducers/canvasWidgetsReducer";
 import { createSelector } from "reselect";
 import { getWidgets } from "sagas/selectors";
-import { isWidget } from "workers/Evaluation/evaluationUtils";
+import {
+  shouldSuppressDebuggerError,
+  isWidget,
+} from "ee/workers/Evaluation/evaluationUtils";
 import { getDataTree } from "./dataTreeSelectors";
+import { combinedPreviewModeSelector } from "./editorSelectors";
+import type { CanvasDebuggerState } from "reducers/uiReducers/debuggerReducer";
 
-type ErrorObejct = {
+interface ErrorObejct {
   [k: string]: Log;
-};
+}
 
 export const getDebuggerErrors = (state: AppState) => state.ui.debugger.errors;
 export const hideErrors = (state: AppState) => state.ui.debugger.hideErrors;
@@ -43,19 +48,24 @@ export const getFilteredErrors = createSelector(
         // filter error - when widget or parent widget is hidden
         // parent widgets e.g. modal, tab, container
         if (entity && isWidget(entity)) {
-          if (!hasParentWidget(entity)) {
-            return entity.isVisible
+          const widgetEntity = entity as WidgetEntity;
+          if (shouldSuppressDebuggerError(widgetEntity)) {
+            return false;
+          }
+          if (!hasParentWidget(widgetEntity)) {
+            return widgetEntity.isVisible
               ? true
-              : alwaysShowEntities[entity.widgetId];
+              : alwaysShowEntities[widgetEntity.widgetId];
           } else {
             const isParentWidgetVisible = isParentVisible(
-              entity,
+              widgetEntity,
               canvasWidgets,
               dataTree,
             );
-            return entity.isVisible
+            return widgetEntity.isVisible
               ? isParentWidgetVisible
-              : isParentWidgetVisible && alwaysShowEntities[entity.widgetId];
+              : isParentWidgetVisible &&
+                  alwaysShowEntities[widgetEntity.widgetId];
           }
         }
         return true;
@@ -66,7 +76,7 @@ export const getFilteredErrors = createSelector(
 );
 
 export const isParentVisible = (
-  currentWidgetData: DataTreeWidget,
+  currentWidgetData: WidgetEntity,
   canvasWidgets: CanvasWidgetsReduxState,
   dataTree: DataTree,
 ): boolean => {
@@ -77,7 +87,7 @@ export const isParentVisible = (
   const parentWidget = canvasWidgets[currentWidgetData.parentId as string];
   if (!parentWidget) return isWidgetVisible;
 
-  const parentWidgetData = dataTree[parentWidget.widgetName] as DataTreeWidget;
+  const parentWidgetData = dataTree[parentWidget.widgetName] as WidgetEntity;
   if (!parentWidgetData) return isWidgetVisible;
 
   switch (parentWidgetData.type) {
@@ -99,17 +109,62 @@ export const isParentVisible = (
   }
 };
 
-export const hasParentWidget = (widget: DataTreeWidget) =>
+export const hasParentWidget = (widget: WidgetEntity) =>
   widget.parentId && widget.parentId !== "0";
 
 export const getMessageCount = createSelector(getFilteredErrors, (errors) => {
-  const errorKeys = Object.keys(errors);
-  const warningsCount = errorKeys.filter((key: string) =>
+  let errorsCount = 0;
+
+  // count number of messages in each error.
+  // This logic is required because each messages in error is rendered separately.
+  Object.values(errors).forEach((error) => {
+    if (error.messages) {
+      errorsCount += error.messages.length;
+    }
+  });
+  // count number of warnings.
+  const warningsCount = Object.keys(errors).filter((key: string) =>
     key.includes("warning"),
   ).length;
-  const errorsCount = errorKeys.length - warningsCount;
+  errorsCount = errorsCount - warningsCount;
   return { errors: errorsCount, warnings: warningsCount };
 });
 
-export const hideDebuggerIconSelector = () =>
-  matchDatasourcePath(window.location.pathname);
+// get selected tab in debugger.
+export const getDebuggerSelectedTab = (state: AppState) =>
+  state.ui.debugger.context.selectedDebuggerTab;
+
+export const getDebuggerSelectedFilter = (state: AppState) =>
+  state.ui.debugger.context.selectedDebuggerFilter;
+
+export const getResponsePaneHeight = (state: AppState) =>
+  state.ui.debugger.context.responseTabHeight;
+
+export const getErrorCount = (state: AppState) =>
+  state.ui.debugger.context.errorCount;
+
+export const getScrollPosition = (state: AppState) =>
+  state.ui.debugger.context.scrollPosition;
+
+export const getDebuggerContext = (state: AppState) =>
+  state.ui.debugger.context;
+
+export const getDebuggerOpen = (state: AppState) => state.ui.debugger.isOpen;
+
+export const showDebuggerFlag = createSelector(
+  getDebuggerOpen,
+  combinedPreviewModeSelector,
+  (isOpen, isPreview) => isOpen && !isPreview,
+);
+
+export const getCanvasDebuggerState = createSelector(
+  showDebuggerFlag,
+  getDebuggerContext,
+  (openState, context): CanvasDebuggerState => {
+    return {
+      open: openState,
+      selectedTab: context.selectedDebuggerTab,
+      responseTabHeight: context.responseTabHeight,
+    };
+  },
+);

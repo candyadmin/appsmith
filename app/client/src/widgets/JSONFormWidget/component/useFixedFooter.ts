@@ -1,11 +1,11 @@
 import { throttle } from "lodash";
 import { useLayoutEffect, useRef } from "react";
 
-type UseFixedFooterProps = {
+interface UseFixedFooterProps {
   fixedFooter: boolean;
   activeClassName: string;
   ref: React.MutableRefObject<HTMLDivElement | null>;
-};
+}
 
 const ERROR_MARGIN = 2;
 
@@ -23,7 +23,7 @@ const THROTTLE_TIMEOUT = 50;
 
 function useFixedFooter<
   HTMLDivElement extends HTMLElement,
-  TFooterElement extends HTMLElement = HTMLDivElement
+  TFooterElement extends HTMLElement = HTMLDivElement,
 >({ activeClassName, fixedFooter, ref }: UseFixedFooterProps) {
   const bodyRef = ref;
   const footerRef = useRef<TFooterElement>(null);
